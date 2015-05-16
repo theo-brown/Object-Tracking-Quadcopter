@@ -2,7 +2,6 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/features2d/features2d.hpp"
-#include "raspicam/raspicam_cv.h"
 
 using namespace cv;
 using namespace std;
@@ -10,11 +9,7 @@ using namespace std;
 int main()
 {
     // Initialise capture device
-    //VideoCapture capture(0);
-    cout << "Initialising PiCamera... ";
-    raspicam::RaspiCam_Cv capture;
-    capture.set(CV_CAP_PROP_FORMAT, CV_8UC3);
-    capture.open();
+    VideoCapture capture(0);
     if(!capture.isOpened())
     {
         cout << "Failed to access webcam \n";
@@ -29,7 +24,7 @@ int main()
     // HSV adjust window
     namedWindow("HSV", CV_WINDOW_AUTOSIZE);
     int threshHue=171, threshSat=125, threshVal=143;
-    int arealow=700,areahigh=50000,bloblow=240,blobhigh=780,blobd=100;
+    int arealow=50,areahigh=10000,bloblow=120,blobhigh=240,blobd=50;
     createTrackbar("Threshold Hue", "HSV", &threshHue, 180);
     createTrackbar("Threshold Sat", "HSV", &threshSat, 255);
     createTrackbar("Threshold Val", "HSV", &threshVal, 255);
@@ -56,8 +51,7 @@ int main()
 
     cout << "Done." << endl << "Taking preliminary image for colour recognition... ";
     // Training
-    capture.grab();
-    capture.retrieve (frame);
+    capture.read(frame);
     if (frame.empty()) {cout << "Error retrieving frame" << endl; return -1;}
     imshow("Preview", frame);
     // Convert to HSV
@@ -83,10 +77,8 @@ int main()
     while (1)
     {
         // Grab frame from webcam
-        //int read = capture.read(frame);
-	capture.grab();
-        capture.retrieve (frame);
-        //if(read != 1) break;
+        int read = capture.read(frame);
+        if(read != 1) break;
         if(frame.empty()) break;
         // Convert to HSV
         frame_hsv.create(frame.size(), frame.type());
@@ -123,7 +115,6 @@ int main()
             break;
         }
     }
-    capture.release();
     return 0;
 }
 

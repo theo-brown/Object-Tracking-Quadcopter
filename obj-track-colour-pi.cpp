@@ -32,19 +32,19 @@ int main()
     // HSV adjust window
     namedWindow("Threshold", CV_WINDOW_AUTOSIZE);
     int threshHue=171, threshSat=125, threshVal=143;
-    int arealow=700,areahigh=30000,bloblow=240,blobhigh=780,blobd=100;
+    int arealow=50,areahigh=10000,bloblow=1200,blobhigh=5000,blobd=50;
     createTrackbar("Threshold Hue", "Threshold", &threshHue, 180);
     createTrackbar("Threshold Sat", "Threshold", &threshSat, 255);
     createTrackbar("Threshold Val", "Threshold", &threshVal, 255);
 
     // SET UP BLOB DETECTION
     SimpleBlobDetector::Params params;
-    //params.minDistBetweenBlobs = blobd;
-    //params.minThreshold = bloblow;
-    //params.maxThreshold = blobhigh;
+    params.minDistBetweenBlobs = blobd;
+    params.minThreshold = bloblow;
+    params.maxThreshold = blobhigh;
     params.filterByArea = true;
-    //params.minArea = arealow;
-    //params.maxArea = areahigh;
+    params.minArea = arealow;
+    params.maxArea = areahigh;
     params.filterByInertia = false;
     params.filterByConvexity = false;
     params.filterByColor = false;
