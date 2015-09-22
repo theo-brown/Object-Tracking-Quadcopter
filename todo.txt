@@ -1,0 +1,3 @@
+//Find median of first n keypoints to find the rough centre of object? DONE
+1st implement yaw tracking
+Reduce resolution to increase speed
