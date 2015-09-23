@@ -7,27 +7,86 @@
 using namespace cv;
 using namespace std;
 
-int main()
-{
-    // Images
-    Mat frame, frame_hsv, frame_thresh, frame_processed;
-    vector<KeyPoint> keypoints;
+raspicam::RaspiCam_Cv pi_camera;
 
-    // INITIALISE CAPTURE DEVICE
-    cout << "Initialising PiCamera... ";
-    raspicam::RaspiCam_Cv capture;
-    capture.set(CV_CAP_PROP_FORMAT, CV_8UC3);
-    capture.open();
+struct frame
+{
+	Mat captured;
+	Mat hsv;
+	Mat thresholded;
+	Mat processed;
+	vector<KeyPoint> keypoints;
+};
+
+int camera_init()
+{
+    // Starts up the Pi camera
+
+    cout << "Initialising Pi camera... ";
+
+    pi_camera.set(CV_CAP_PROP_FORMAT, CV_8UC3);
+
+    pi_camera.open();
     sleep(1);
-    if (!capture.isOpened())
+
+    if (!pi_camera.isOpened())
     {
-        cout << "Failed to access webcam. \n";
+        cout << "Failed to access webcam" << endl;
         return -1;
     }
     sleep(3);
+    cout << "Done." << endl;
 
-    // CREATE WINDOWS
-    cout << "Done." << endl << "Creating windows... ";
+    return 0;
+}
+
+frame frame_capture(frame img)
+{
+    // Captures a frame
+
+    pi_camera.grab();
+    pi_camera.retrieve(img.captured);
+
+    if (img.captured.empty())
+    {
+        cout << "Error retrieving frame" << endl;
+        return img;
+    }
+
+    resize(img.captured, img.captured, Size(320,240), 0, 0, CV_INTER_AREA);
+    flip(img.captured, img.captured, 0);
+
+    return img;
+}
+
+frame detect_obj (frame img, Ptr<SimpleBlobDetector> detector, int hue, int sat, int val)
+{
+    // Convert to HSV
+    img.hsv.create(img.captured.size(), img.captured.type());
+    cvtColor(img.captured, img.hsv, CV_BGR2HSV);
+
+    // Threshold the frame
+    inRange(img.hsv, Scalar(hue-7, sat, val), Scalar(hue+7, 255, 255), img.thresholded);
+
+    // Detect blobs
+    detector->detect(img.thresholded, img.keypoints);
+
+    return img;
+}
+
+int main()
+{
+    frame frame1;
+
+    /*******************************/
+    /** INITIALISE CAPTURE DEVICE **/
+    /*******************************/
+    camera_init();
+
+    /********************/
+    /** CREATE WINDOWS **/
+    /********************/ 
+    cout << "Creating windows... ";
     // Image display window
     namedWindow("Preview", CV_WINDOW_AUTOSIZE);
     // HSV adjust window
@@ -37,51 +96,36 @@ int main()
     createTrackbar("Threshold Sat", "Threshold", &threshSat, 255);
     createTrackbar("Threshold Val", "Threshold", &threshVal, 255);
 
-    // SET UP BLOB DETECTION
+    /***************************/
+    /** SET UP BLOB DETECTION **/
+    /***************************/
+    // Initialise parameters
     SimpleBlobDetector::Params params;
     params.minDistBetweenBlobs = 40;
     params.filterByArea = true;
-    params.filterByInertia = false;
-    params.filterByConvexity = false;
-    params.filterByColor = false;
-    params.filterByCircularity = false;
     // Create the blob detector
     Ptr<SimpleBlobDetector> blobdetect = SimpleBlobDetector::create(params);
 
-    // COLOUR TRAINING
+
+    /*********************/
+    /** COLOUR TRAINING **/
+    /*********************/
     int rept = 1;
     while (rept == 1)
     {
         cout << "Done." << endl << "Taking preliminary image for colour recognition... ";
 
-        // Get frame
-        capture.grab();
-        capture.retrieve(frame);
-        if (frame.empty())
-        {
-            cout << "Error retrieving frame" << endl;
-            return -1;
-        }
-        resize(frame,frame,Size(320,240),0,0,CV_INTER_AREA);
-        //resize(frame,frame,Size(240,160),0,0,CV_INTER_AREA);
-        flip(frame, frame, 0);
-        imshow("Preview", frame);
+        frame1 = frame_capture(frame1);
 
-        // Convert to HSV
-        frame_hsv.create(frame.size(), frame.type());
-        cvtColor(frame,frame_hsv,CV_BGR2HSV);
-        cout << "Done." << endl << "Proceed with colour training. (r to repeat, q to continue)" << endl;
+        cout << "Done." << endl;
 
         while (1)
         {
-            // Threshold the frame
-            inRange(frame_hsv, Scalar(threshHue-7,threshSat,threshVal), Scalar(threshHue+7,255,255),frame_thresh);
-            imshow("Threshold", frame_thresh);
+            frame1 = detect_obj(frame1, blobdetect, threshHue, threshSat, threshVal);
+            drawKeypoints(frame1.captured, frame1.keypoints, frame1.processed, Scalar(0,0,0), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
 
-            // Detect blobs
-            blobdetect->detect(frame_thresh, keypoints);
-            drawKeypoints(frame, keypoints, frame_processed, Scalar(0,0,0), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-            imshow("Preview",frame_processed);
+            imshow("Threshold", frame1.thresholded);
+            imshow("Preview",frame1.processed);
 
             char c = waitKey(100);
             if (c == 113) // q pressed
@@ -101,43 +145,30 @@ int main()
         }
     }
 
-    // OBJECT TRACKING
+
+    /*********************/
+    /** OBJECT TRACKING **/
+    /*********************/
     while (1)
     {
-        // Grab frame from webcam
-        capture.grab();
-        capture.retrieve (frame);
-        if(frame.empty()) break;
-        resize(frame,frame,Size(320,240),0,0,CV_INTER_AREA);
-        //resize(frame,frame,Size(240,160),0,0,CV_INTER_AREA);
-        flip(frame,frame,0);
-
-        // Convert to HSV
-        frame_hsv.create(frame.size(), frame.type());
-        cvtColor(frame,frame_hsv,CV_BGR2HSV);
-
-        // Threshold the frame
-        inRange(frame_hsv, Scalar(threshHue-7,threshSat,threshVal), Scalar(threshHue+7,255,255),frame_thresh);
-
-        // Detect blobs
-        blobdetect->detect(frame_thresh, keypoints);
+        frame1 = frame_capture(frame1);
+        frame1 = detect_obj(frame1, blobdetect, threshHue, threshSat, threshVal);
 
         // Find mean of first 5 keypoints:
         float tot_x=0, tot_y=0, mean_x, mean_y, tot_size=0, mean_size;
         int no_kpts=0;
-        for(no_kpts; no_kpts<keypoints.size() && no_kpts<=5; no_kpts++)
+        for(no_kpts; no_kpts < frame1.keypoints.size() && no_kpts<=5; no_kpts++)
         {
-            tot_x += keypoints[no_kpts].pt.x;
-            tot_y += keypoints[no_kpts].pt.y;
-            tot_size += keypoints[no_kpts].size;
+            tot_x += frame1.keypoints[no_kpts].pt.x;
+            tot_y += frame1.keypoints[no_kpts].pt.y;
+            tot_size += frame1.keypoints[no_kpts].size;
         }
         mean_x = tot_x / no_kpts;
         mean_y = tot_y / no_kpts;
         mean_size = tot_size / no_kpts;
 
-
         // Return keypoint distance from centre
-        Point2f centre = Point(frame.cols/2, frame.rows/2);
+        Point2f centre = Point(frame1.captured.cols/2, frame1.captured.rows/2);
         Point2f mean_pt = Point(mean_x, mean_y);
         Point2f pt_err = centre - mean_pt;
         if(pt_err.x == 160 && pt_err.y == 120);
@@ -149,10 +180,15 @@ int main()
         cout << "Diff X:" << pt_err.x << " Y: " << pt_err.y << endl;
 
         // Draw on mean point
-        circle(frame, mean_pt, mean_size, Scalar(0,0,0));
+        circle(frame1.captured, mean_pt, mean_size, Scalar(0,0,0));
 
         // Display frame
-        imshow("Preview", frame);
+        imshow("Preview", frame1.captured);
+
+
+        // SERIAL TRANSMISSION
+        int scaled_err_x = pt_err.x * 500 / 160;
+        int scaled_err_y = pt_err.y * 500 / 120;
 
         // Exit if q pressed
         char c = waitKey(20);
@@ -163,7 +199,7 @@ int main()
         }
     }
     cout << "Releasing camera... ";
-    capture.release();
+    pi_camera.release();
     cout << "Done." << endl;
     return 0;
 }
