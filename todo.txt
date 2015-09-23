@@ -1,3 +1,4 @@
 //Find median of first n keypoints to find the rough centre of object? DONE
 1st implement yaw tracking
-Reduce resolution to increase speed
+//Reduce resolution to increase speed -no effect
+//Problem - not returning coordinates. solution - blob detectro was detecting by all parameters, readded 'false' to all except colour

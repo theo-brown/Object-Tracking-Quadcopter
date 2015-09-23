@@ -11,11 +11,11 @@ raspicam::RaspiCam_Cv pi_camera;
 
 struct frame
 {
-	Mat captured;
-	Mat hsv;
-	Mat thresholded;
-	Mat processed;
-	vector<KeyPoint> keypoints;
+    Mat captured;
+    Mat hsv;
+    Mat thresholded;
+    Mat processed;
+    vector<KeyPoint> keypoints;
 };
 
 int camera_init()
@@ -85,7 +85,7 @@ int main()
 
     /********************/
     /** CREATE WINDOWS **/
-    /********************/ 
+    /********************/
     cout << "Creating windows... ";
     // Image display window
     namedWindow("Preview", CV_WINDOW_AUTOSIZE);
@@ -103,6 +103,10 @@ int main()
     SimpleBlobDetector::Params params;
     params.minDistBetweenBlobs = 40;
     params.filterByArea = true;
+    params.filterByInertia = false;
+    params.filterByConvexity = false;
+    params.filterByColor = false;
+    params.filterByCircularity = false;
     // Create the blob detector
     Ptr<SimpleBlobDetector> blobdetect = SimpleBlobDetector::create(params);
 
@@ -122,6 +126,7 @@ int main()
         while (1)
         {
             frame1 = detect_obj(frame1, blobdetect, threshHue, threshSat, threshVal);
+
             drawKeypoints(frame1.captured, frame1.keypoints, frame1.processed, Scalar(0,0,0), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
 
             imshow("Threshold", frame1.thresholded);
@@ -157,7 +162,7 @@ int main()
         // Find mean of first 5 keypoints:
         float tot_x=0, tot_y=0, mean_x, mean_y, tot_size=0, mean_size;
         int no_kpts=0;
-        for(no_kpts; no_kpts < frame1.keypoints.size() && no_kpts<=5; no_kpts++)
+        for(no_kpts; no_kpts < frame1.keypoints.size() and no_kpts<=5; no_kpts++)
         {
             tot_x += frame1.keypoints[no_kpts].pt.x;
             tot_y += frame1.keypoints[no_kpts].pt.y;
@@ -168,13 +173,14 @@ int main()
         mean_size = tot_size / no_kpts;
 
         // Return keypoint distance from centre
-        Point2f centre = Point(frame1.captured.cols/2, frame1.captured.rows/2);
-        Point2f mean_pt = Point(mean_x, mean_y);
-        Point2f pt_err = centre - mean_pt;
-        if(pt_err.x == 160 && pt_err.y == 120);
+        Point2i max = Point(frame1.captured.cols, frame1.captured.rows);
+        Point2i centre = Point(frame1.captured.cols/2, frame1.captured.rows/2);
+        Point2i mean_pt = Point(mean_x, mean_y);
+        Point2i pt_err = centre - mean_pt;
+
+        if(pt_err == max)
         {
-            pt_err.x = 0;
-            pt_err.y = 0;
+            pt_err = Point(0,0);
         }
 
         cout << "Diff X:" << pt_err.x << " Y: " << pt_err.y << endl;
@@ -198,8 +204,10 @@ int main()
             break;
         }
     }
-    cout << "Releasing camera... ";
+    cout << "Releasing camera and windows... ";
     pi_camera.release();
+    destroyWindow("Preview");
+    destroyWindow("Threshold");
     cout << "Done." << endl;
     return 0;
 }
