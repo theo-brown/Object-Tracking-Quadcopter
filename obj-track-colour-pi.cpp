@@ -27,7 +27,6 @@ struct obj_point
 int camera_init()
 {
     // Starts up the Pi camera
-
     cout << "Initialising Pi camera... ";
 
     pi_camera.set(CV_CAP_PROP_FORMAT, CV_8UC3);
@@ -49,7 +48,6 @@ int camera_init()
 frame frame_capture(frame img)
 {
     // Captures a frame
-
     pi_camera.grab();
     pi_camera.retrieve(img.captured);
 
@@ -83,8 +81,8 @@ frame detect_obj (frame img, Ptr<SimpleBlobDetector> detector, int hue, int sat,
 obj_point find_mean_point (frame img, obj_point opoint)
 {
     // Find mean (x,y) and size of first 5 keypoints:
-    float tot_x=0, tot_y=0, tot_size=0;
-    for(int no_kpts=0; no_kpts < img.keypoints.size() and no_kpts<=5; no_kpts++)
+    float tot_x=0, tot_y=0, tot_size=0, no_kpts=0;
+    for(no_kpts; no_kpts < img.keypoints.size() and no_kpts<=5; no_kpts++)
     {
         tot_x += img.keypoints[no_kpts].pt.x;
         tot_y += img.keypoints[no_kpts].pt.y;
@@ -177,11 +175,12 @@ int main()
     /*********************/
     /** OBJECT TRACKING **/
     /*********************/
+    obj_point mean_pt;
     while (1)
     {
         frame1 = frame_capture(frame1);
         frame1 = detect_obj(frame1, blobdetect, threshHue, threshSat, threshVal);
-        obj_point mean_pt = find_mean_point(frame1);
+        mean_pt = find_mean_point(frame1, mean_pt);
 
         // Return keypoint distance from centre
         Point2i max = Point(frame1.captured.cols, frame1.captured.rows);
