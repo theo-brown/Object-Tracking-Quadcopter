@@ -191,8 +191,9 @@ int main()
         // Display frame
         imshow("Preview", frame1.captured);
 
-
-        // SERIAL TRANSMISSION
+        /*****************/
+        /** PWM SIGNALS **/
+        /*****************/
         int scaled_err_x = pt_err.x * 500 / 160;
         int scaled_err_y = pt_err.y * 500 / 120;
 
