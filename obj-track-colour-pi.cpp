@@ -18,6 +18,12 @@ struct frame
     vector<KeyPoint> keypoints;
 };
 
+struct obj_point
+{
+    Point2i pt;
+    int size;
+};
+
 int camera_init()
 {
     // Starts up the Pi camera
@@ -74,23 +80,20 @@ frame detect_obj (frame img, Ptr<SimpleBlobDetector> detector, int hue, int sat,
     return img;
 }
 
-Point2i find_mean_point (frame img)
+obj_point find_mean_point (frame img, obj_point opoint)
 {
-    // Find mean of first 5 keypoints:
-    float tot_x=0, tot_y=0, mean_x, mean_y, tot_size=0, mean_size;
-    int no_kpts=0;
-    for(no_kpts; no_kpts < img.keypoints.size() and no_kpts<=5; no_kpts++)
+    // Find mean (x,y) and size of first 5 keypoints:
+    float tot_x=0, tot_y=0, tot_size=0;
+    for(int no_kpts=0; no_kpts < img.keypoints.size() and no_kpts<=5; no_kpts++)
     {
         tot_x += img.keypoints[no_kpts].pt.x;
         tot_y += img.keypoints[no_kpts].pt.y;
         tot_size += img.keypoints[no_kpts].size;
     }
-    mean_x = tot_x / no_kpts;
-    mean_y = tot_y / no_kpts;
-    mean_size = tot_size / no_kpts;
+    opoint.pt = Point(tot_x / no_kpts, tot_y / no_kpts);
+    opoint.size = tot_size / no_kpts;
 
-    // Return mean keypoint
-    return Point(mean_x, mean_y);
+    return opoint;
 }
 
 int main()
@@ -178,19 +181,19 @@ int main()
     {
         frame1 = frame_capture(frame1);
         frame1 = detect_obj(frame1, blobdetect, threshHue, threshSat, threshVal);
-        Point2i mean_pt = find_mean_point(frame1);
+        obj_point mean_pt = find_mean_point(frame1);
         
         // Return keypoint distance from centre
         Point2i max = Point(frame1.captured.cols, frame1.captured.rows);
         Point2i centre = Point(frame1.captured.cols/2, frame1.captured.rows/2);
-        Point2i pt_err = centre - mean_pt;
+        Point2i pt_err = centre - mean_pt.pt;
 
         if(pt_err == max) {pt_err = Point(0,0);}
 
         cout << "Diff X:" << pt_err.x << " Y: " << pt_err.y << endl;
 
         // Draw on mean point
-        circle(frame1.captured, mean_pt, mean_size, Scalar(0,0,0));
+        circle(frame1.captured, mean_pt.pt, mean_pt.size, Scalar(0,0,0));
 
         // Display frame
         imshow("Preview", frame1.captured);
