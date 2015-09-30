@@ -211,7 +211,7 @@ int main()
         /*****************/
         /** YAW CONTROL **/
         /*****************/
-        int yaw_val = PWM_NEUTRAL + (pt_err * PWM_RANGE / max.x)
+        int yaw_val = PWM_NEUTRAL + (pt_err.x * PWM_RANGE / max.x);
         cout << "Yaw: " << yaw_val << endl;
         gpioServo(PWM_PIN, yaw_val);
         
