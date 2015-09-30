@@ -76,7 +76,7 @@ frame detect_obj (frame img, Ptr<SimpleBlobDetector> detector, int hue, int sat,
     img.hsv.create(img.captured.size(), img.captured.type());
     cvtColor(img.captured, img.hsv, CV_BGR2HSV);
 
-    // Threshold the frame
+    // Threshold the frame so only specified HSV displayed
     inRange(img.hsv, Scalar(hue-7, sat, val), Scalar(hue+7, 255, 255), img.thresholded);
 
     // Detect blobs
@@ -85,7 +85,7 @@ frame detect_obj (frame img, Ptr<SimpleBlobDetector> detector, int hue, int sat,
     return img;
 }
 
-obj_point find_mean_point (frame img, obj_point opoint)
+obj_point find_mean_point (frame img, obj_point mean_point)
 {
     // Find mean (x,y) and size of first 5 keypoints:
     float tot_x=0, tot_y=0, tot_size=0, no_kpts=0;
@@ -95,10 +95,10 @@ obj_point find_mean_point (frame img, obj_point opoint)
         tot_y += img.keypoints[no_kpts].pt.y;
         tot_size += img.keypoints[no_kpts].size;
     }
-    opoint.pt = Point(tot_x / no_kpts, tot_y / no_kpts);
-    opoint.size = tot_size / no_kpts;
+    mean_point.pt = Point(tot_x / no_kpts, tot_y / no_kpts);
+    mean_point.size = tot_size / no_kpts;
 
-    return opoint;
+    return mean_point;
 }
 
 /***************************************/
@@ -197,23 +197,23 @@ int main()
         mean_pt = find_mean_point(frame1, mean_pt);
 
         // Return keypoint distance from centre
-        Point2i max = Point(IMG_WIDTH, IMG_HEIGHT);
         Point2i centre = Point(IMG_WIDTH/2, IMG_HEIGHT/2);
         Point2i pt_err = centre - mean_pt.pt;
-
-        if(pt_err == max) {pt_err = Point(0,0);}
+        // If the object is off the screen, mean_pt.pt == 0 so pt_err == centre.
+        // This line eliminates the false result to keep the quad under control.
+        if(pt_err == centre) {pt_err = Point(0,0);} 
 
         cout << "Diff X: " << pt_err.x << " Y: " << pt_err.y << endl;
 
-        // Draw on mean point
+        // Draw circle on mean point
         circle(frame1.captured, mean_pt.pt, mean_pt.size, Scalar(0,0,0));
         
         /*****************/
         /** YAW CONTROL **/
         /*****************/
-        int yaw_val = PWM_NEUTRAL + (pt_err.x * PWM_RANGE / max.x);
+        int yaw_val = PWM_NEUTRAL + (pt_err.x * PWM_RANGE / (IMG_WIDTH/2)); // Scales the yaw value to 1000-2000, 1500 as neutral
         cout << "Yaw: " << yaw_val << endl;
-        gpioServo(PWM_PIN, yaw_val);
+        gpioServo(PWM_PIN, yaw_val); // Send PWM pulses
         
 
         // Display frame
