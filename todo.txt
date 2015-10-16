@@ -2,5 +2,8 @@
 1st implement yaw tracking
 //Reduce resolution to increase speed -no effect
 //Problem - not returning coordinates. solution - blob detectro was detecting by all parameters, readded 'false' to all except colour
-PIGPIO servo control
-piscope for viewing - compare traces!
+//PIGPIO servo control
+//piscope for viewing - compare traces! - Done with oscilloscope
+
+Code optimisation / compiling for four cores / multi-threading
+Exchange blob detector for findContours
