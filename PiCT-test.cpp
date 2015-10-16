@@ -1,4 +1,5 @@
 #include <iostream>
+#include <math.h>
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/features2d/features2d.hpp"
@@ -10,26 +11,28 @@
 #define PWM_NEUTRAL 1500
 #define PWM_RANGE 500
 #define PWM_PIN 17
+#define PI PI  3.14159265
 
 using namespace cv;
 using namespace std;
 
 raspicam::RaspiCam_Cv pi_camera;
 
+struct obj_point
+{
+    Point2i pt;
+    int size;
+};
+
 struct frame
 {
     Mat captured;
     Mat hsv;
     Mat thresholded;
-    Mat processed;
     vector<vector<Point>> contours;
-    vector<KeyPoint> keypoints;
-};
-
-struct obj_point
-{
-    Point2i pt;
-    int size;
+    vector<Moments> momts;
+    vector<Point2f> momt_centres;
+    obj_point mean_point;
 };
 
 int camera_init()
@@ -82,24 +85,27 @@ frame detect_obj (frame img, int hue, int sat, int val)
 
     // Contour the image
     findContours(img.thresholded, img.contours, CV_RETR_OUTER, CV_CHAIN_APPROX_SIMPLE);
-
-    return img;
-}
-
-obj_point find_mean_point (frame img, obj_point mean_point)
-{
-    // Find mean (x,y) and size of first 5 keypoints:
-    float tot_x=0, tot_y=0, tot_size=0, no_kpts=0;
-    for(no_kpts; no_kpts < img.keypoints.size() and no_kpts<=5; no_kpts++)
+    
+    // Create moments structure
+    img.momts(img.contours.size());
+    float tot_x=0, tot_y=0, tot_size=0, contour_no;
+    // Iterate through the first 5 contours
+    for(int contour_no=0; contour_no < img.contours.size and contour_no <= 5; contour_no++)
     {
-        tot_x += img.keypoints[no_kpts].pt.x;
-        tot_y += img.keypoints[no_kpts].pt.y;
-        tot_size += img.keypoints[no_kpts].size;
+        // Calculate moment of contour
+        img.momts[contour_no] = moments(contours[contour_no]);
+        // Calculate moment centre
+        img.momt_centres[contour_no] = Point2f(img.momts[contour_no].m10 / img.momts[contour_no].m00, img.momts[contour_no].m01 / img.momts[contour_no].m00);
+        // Add moment to sum
+        tot_pt += img.momt_centres[contour_no];
+        tot_size += contourArea(img.contours[contour_number]);
     }
-    mean_point.pt = Point(tot_x / no_kpts, tot_y / no_kpts);
-    mean_point.size = tot_size / no_kpts;
-
-    return mean_point;
+    
+    // Calculate mean centre and size
+    img.mean_point.pt = Point2f(tot_pt.x / contour_no, tot_pt.y / contour_no);
+    img.mean_point.size = tot_size / contour_no;
+    
+    return img;
 }
 
 /***************************************/
@@ -146,12 +152,12 @@ int main()
 
         while (1)
         {
-            frame1 = detect_obj(frame1, blobdetect, threshHue, threshSat, threshVal);
-
-            drawKeypoints(frame1.captured, frame1.keypoints, frame1.processed, Scalar(0,0,0), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+            frame1 = detect_obj(frame1, threshHue, threshSat, threshVal);
+            // Draw circle on mean point
+            circle(frame1.captured, mean_pt.pt, sqrt(mean_pt.size/PI), Scalar(0,0,0));
 
             imshow("Threshold", frame1.thresholded);
-            imshow("Preview",frame1.processed);
+            imshow("Preview",frame1.captured);
 
             char c = waitKey(100);
             if (c == 113) // q pressed
@@ -176,16 +182,14 @@ int main()
     /*********************/
     /** OBJECT TRACKING **/
     /*********************/
-    obj_point mean_pt;
     while (1)
     {
         frame1 = frame_capture(frame1);
         frame1 = detect_obj(frame1, blobdetect, threshHue, threshSat, threshVal);
-        mean_pt = find_mean_point(frame1, mean_pt);
 
         // Return keypoint distance from centre
         Point2i centre = Point(IMG_WIDTH/2, IMG_HEIGHT/2);
-        Point2i pt_err = centre - mean_pt.pt;
+        Point2i pt_err = centre - img.mean_point.pt;
         // If the object is off the screen, mean_pt.pt == 0 so pt_err == centre.
         // This line eliminates the false result to keep the quad under control.
         if(pt_err == centre) {pt_err = Point(0,0);} 
@@ -193,7 +197,7 @@ int main()
         cout << "Diff X: " << pt_err.x << " Y: " << pt_err.y << endl;
 
         // Draw circle on mean point
-        circle(frame1.captured, mean_pt.pt, mean_pt.size, Scalar(0,0,0));
+        circle(frame1.captured, mean_pt.pt, sqrt(mean_pt.size/PI), Scalar(0,0,0));
         
         /*****************/
         /** YAW CONTROL **/
