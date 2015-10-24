@@ -27,14 +27,25 @@ struct obj_point
 
 struct frame
 {
-	Mat captured;
+    Mat captured;
     Mat hsv;
     Mat thresholded;
     Mat processed;
     vector<vector<Point> > contrs;
-    //vector<Point2f> momt_centres;
     obj_point mean_point;
 };
+
+int arm_quad()
+{
+    cout << "Arming Quadcopter... ";
+    gpioServo(PWM_PIN, 0);
+    sleep(2);
+    gpioServo(PWM_PIN, 1500);
+    sleep(2);
+    gpioServo(PWM_PIN, 0);
+    cout << "Done." << endl;
+    return 0;
+}
 
 
 int camera_init()
@@ -52,7 +63,7 @@ int camera_init()
         cout << "Failed to access webcam" << endl;
         return -1;
     }
-    sleep(3);
+    sleep(2);
     cout << "Done." << endl;
 
     return 0;
@@ -210,6 +221,7 @@ int main()
     /*********************/
     /** OBJECT TRACKING **/
     /*********************/
+    arm_quad();
     while (1)
     {
         frame1 = frame_capture(frame1);
