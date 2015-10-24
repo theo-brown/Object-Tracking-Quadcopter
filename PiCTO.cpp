@@ -27,14 +27,24 @@ struct obj_point
 
 struct frame
 {
-	Mat captured;
+    Mat captured;
     Mat hsv;
     Mat thresholded;
     Mat processed;
     vector<vector<Point> > contrs;
-    //vector<Point2f> momt_centres;
     obj_point mean_point;
 };
+
+int arm_quad()
+{
+    cout << "Arming Quadcopter... ";
+    gpioServo(PWM_PIN, 0);
+    sleep(2);
+    gpioServo(PWM_PIN, 1500);
+    sleep(2);
+    gpioServo(PWM_PIN, 0);
+    cout << "Done "
+}
 
 
 int camera_init()
