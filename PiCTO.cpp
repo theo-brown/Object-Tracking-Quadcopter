@@ -43,7 +43,8 @@ int arm_quad()
     gpioServo(PWM_PIN, 1500);
     sleep(2);
     gpioServo(PWM_PIN, 0);
-    cout << "Done "
+    cout << "Done." << endl;
+    return 0;
 }
 
 
@@ -62,7 +63,7 @@ int camera_init()
         cout << "Failed to access webcam" << endl;
         return -1;
     }
-    sleep(3);
+    sleep(2);
     cout << "Done." << endl;
 
     return 0;
@@ -220,6 +221,7 @@ int main()
     /*********************/
     /** OBJECT TRACKING **/
     /*********************/
+    arm_quad();
     while (1)
     {
         frame1 = frame_capture(frame1);
