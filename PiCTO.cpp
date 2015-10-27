@@ -6,6 +6,9 @@
 #include "opencv2/features2d/features2d.hpp"
 #include "raspicam/raspicam_cv.h"
 #include <pigpio.h>
+#include "opencv.hpp"
+#include "quadcopter.hpp"
+#include "pi_camera.hpp"
 
 #define IMG_WIDTH 320
 #define IMG_HEIGHT 240
@@ -17,144 +20,6 @@
 
 using namespace cv;
 using namespace std;
-
-raspicam::RaspiCam_Cv pi_camera;
-
-struct obj_point
-{
-    Point2f pt;
-    int size;
-};
-
-struct frame
-{
-    Mat captured;
-    Mat hsv;
-    Mat thresholded;
-    Mat processed;
-    Mat drawn_circle;
-    vector<vector<Point> > contrs;
-    obj_point object;
-};
-
-
-void arm_quad()
-{
-    cout << "Arming Quadcopter... ";
-    gpioServo(PWM_PIN, PWM_NEUTRAL);
-    sleep(2);
-    gpioServo(PWM_PIN, PWM_NEUTRAL - PWM_REAL_RANGE);
-    sleep(2);
-    gpioServo(PWM_PIN, PWM_NEUTRAL);
-    cout << "Done." << endl;
-}
-
-void disarm_quad()
-{
-    cout << "Disarming Quadcopter... ";
-    gpioServo(PWM_PIN, PWM_NEUTRAL);
-    sleep(2);
-    gpioServo(PWM_PIN, PWM_NEUTRAL + PWM_REAL_RANGE);
-    sleep(2);
-    gpioServo(PWM_PIN, PWM_NEUTRAL);
-    cout << "Done." << endl;
-}
-
-
-int camera_init()
-{
-    // Starts up the Pi camera
-    cout << "Initialising Pi camera... ";
-
-    pi_camera.set(CV_CAP_PROP_FORMAT, CV_8UC3);
-
-    pi_camera.open();
-    sleep(1);
-
-    if (!pi_camera.isOpened())
-    {
-        cout << "Failed to access webcam" << endl;
-        return -1;
-    }
-    sleep(2);
-    cout << "Done." << endl;
-
-    return 0;
-}
-
-frame frame_capture(frame img)
-{
-    // Captures a frame
-    pi_camera.grab();
-    pi_camera.retrieve(img.captured);
-
-    if (img.captured.empty())
-    {
-        cout << "Error retrieving frame" << endl;
-        return img;
-    }
-
-    resize(img.captured, img.captured, Size(IMG_WIDTH,IMG_HEIGHT), 0, 0, CV_INTER_AREA);
-    flip(img.captured, img.captured, 0);
-
-    return img;
-}
-
-Mat morph_mat(Mat src, Mat dst)
-{
-	Mat erode_rect = getStructuringElement(MORPH_RECT,Size(2,2));
-	Mat dilate_rect = getStructuringElement(MORPH_RECT,Size(5,5));
-	erode(src, dst, erode_rect, Point(-1,-1), 2);
-	dilate(dst, dst, dilate_rect, Point(-1,-1), 2);
-	return dst;
-}
-
-frame detect_obj (frame img, int hue, int sat, int val)
-{
-    // Convert to HSV
-    img.hsv.create(img.captured.size(), img.captured.type());
-    cvtColor(img.captured, img.hsv, CV_BGR2HSV);
-
-    // Threshold the frame so only specified HSV displayed
-    inRange(img.hsv, Scalar(hue-7, sat, val), Scalar(hue+7, 255, 255), img.thresholded);
-    // Erode and dilate image
-    morph_mat(img.thresholded, img.thresholded);
-    // Copy it for modifying
-    img.thresholded.copyTo(img.processed);
-
-    // Contour the image
-    findContours(img.processed, img.contrs, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE);
-
-    int contour_no=0, largest_contour_no, largest_contour_area=0;
-    // Iterate through the contours
-    for(contour_no; contour_no < img.contrs.size(); contour_no++)
-    {
-		// Find the largest contour
-		if(contourArea(img.contrs[contour_no]) > largest_contour_area)
-		{
-			largest_contour_area = contourArea(img.contrs[contour_no]);
-			largest_contour_no = contour_no;
-		}
-	}
-
-    // If no contours found then mean point is 0
-    if(largest_contour_area == 0)
-    {
-	    img.object.pt = Point2f(0,0);
-	    img.object.size = 0;
-    }
-    else
-    {
-		// Find moments of largest contour
-		Moments obj_momts = moments(img.contrs[largest_contour_no], false);
-		// Calculate moment centre
-        img.object.pt = Point2f(obj_momts.m10 / obj_momts.m00, obj_momts.m01 / obj_momts.m00);
-        img.object.size = largest_contour_area;
-    }
-    return img;
-}
-
-/***************************************/
 
 int main()
 {
@@ -208,21 +73,17 @@ int main()
             frame1 = detect_obj(frame1, threshHue, threshSat, threshVal);
 
             // Draw circle on mean point
-            frame1.drawn_circle = frame1.captured.clone();
-            circle(frame1.drawn_circle, frame1.object.pt, sqrt(frame1.object.size/PI), Scalar(0,0,0));
+            Mat drawn_circle = frame1.captured.clone();
+            circle(drawn_circle, frame1.object.pt, sqrt(frame1.object.size/PI), Scalar(0,0,0));
 
-            //imshow("Contours", frame1.processed);
             imshow("Threshold", frame1.thresholded);
-            imshow("Preview",frame1.drawn_circle);
+            imshow("Preview", drawn_circle);
 
             // Get keypress from user
             char c = waitKey(100);
             if (c == 113) // q pressed
             {
                 cout << "Proceeding to object tracking. (q to exit, a to arm, d to disarm) " << endl;
-                destroyWindow("Threshold");
-
-                waitKey(20);
                 rept = 0;
                 break;
             }
@@ -242,9 +103,8 @@ int main()
             }
         }
     }
-    destroyWindow("Preview");
-    arm_quad();
 
+    destroyWindow("Preview");
 
     /*********************/
     /** OBJECT TRACKING **/
@@ -264,7 +124,8 @@ int main()
         cout << "Diff X: " << pt_err.x << " Y: " << pt_err.y << endl;
 
         // Draw circle on mean point
-        circle(frame1.captured, frame1.object.pt, sqrt(frame1.object.size/PI), Scalar(0,0,0));
+        circle(frame1.thresholded, frame1.object.pt, sqrt(frame1.object.size/PI), Scalar(255,0,0));
+        imshow("Threshold", frame1.thresholded);
 
         /*****************/
         /** YAW CONTROL **/
@@ -272,11 +133,6 @@ int main()
         int yaw_val = PWM_NEUTRAL - (pt_err.x * PWM_ADJUST_RANGE / (IMG_WIDTH/2)); // Scales the yaw value
         cout << "Yaw: " << yaw_val << endl;
         gpioServo(PWM_PIN, yaw_val); // Send PWM pulses
-
-
-        // Display frame
-        //imshow("Contours", frame1.processed);
-        //imshow("Preview", frame1.captured);
 
         // Get keypress from the user
         char c = waitKey(20);
@@ -300,9 +156,7 @@ int main()
     cout << "Releasing camera... " << endl;
     pi_camera.release();
     cout << "Releasing windows... " << endl;
-    //destroyWindow("Contours");
-    //destroyWindow("Preview");
-    //destroyWindow("Threshold");
+    destroyWindow("Threshold");
     cout << "Stopping PIGPIO..." << endl;
     gpioTerminate();
     cout << "Done." << endl;
