@@ -12,7 +12,7 @@
 #define PWM_NEUTRAL 1500
 #define PWM_RANGE 500
 #define PWM_PIN 17
-#define PI  3.14159265
+#define PI  3.1416
 
 using namespace cv;
 using namespace std;
@@ -38,11 +38,11 @@ struct frame
 int arm_quad()
 {
     cout << "Arming Quadcopter... ";
-    gpioServo(PWM_PIN, 0);
+    gpioServo(PWM_PIN, PWM_NEUTRAL);
     sleep(2);
-    gpioServo(PWM_PIN, 1500);
-    sleep(2);
-    gpioServo(PWM_PIN, 0);
+    gpioServo(PWM_PIN, PWM_NEUTRAL-PWM_RANGE);
+    sleep(3);
+    gpioServo(PWM_PIN, PWM_NEUTRAL);
     cout << "Done." << endl;
     return 0;
 }
@@ -101,7 +101,7 @@ frame detect_obj (frame img, int hue, int sat, int val)
     // Convert to HSV
     img.hsv.create(img.captured.size(), img.captured.type());
     cvtColor(img.captured, img.hsv, CV_BGR2HSV);
-    
+
     // Threshold the frame so only specified HSV displayed
     inRange(img.hsv, Scalar(hue-7, sat, val), Scalar(hue+7, 255, 255), img.thresholded);
     // Erode and dilate image
@@ -117,7 +117,7 @@ frame detect_obj (frame img, int hue, int sat, int val)
     vector<Point2f> momt_centres(img.contrs.size());
     float tot_size=0;
     int contour_no=0;
-    Point2f tot_pt(0,0);    
+    Point2f tot_pt(0,0);
     // Iterate through the contours
     for(contour_no; contour_no < img.contrs.size(); contour_no++)
     {
@@ -174,6 +174,7 @@ int main()
     /** INITIALISE PIGPIO **/
     /***********************/
     gpioInitialise();
+    gpioServo(PWM_PIN,PWM_NEUTRAL);
 
 
     /*********************/
@@ -193,7 +194,7 @@ int main()
             frame1 = detect_obj(frame1, threshHue, threshSat, threshVal);
             // Draw circle on mean point
             circle(frame1.captured, frame1.mean_point.pt, sqrt(frame1.mean_point.size/PI), Scalar(0,0,0));
-        
+
             imshow("Contours", frame1.processed);
             imshow("Threshold", frame1.thresholded);
             imshow("Preview",frame1.captured);
@@ -232,7 +233,7 @@ int main()
         Point2f pt_err = centre - frame1.mean_point.pt;
         // If the object is off the screen, mean_point.pt == 0 so pt_err == centre.
         // This line eliminates the false result to keep the quad under control.
-        if(pt_err == centre) {pt_err = Point(0,0);} 
+        if(pt_err == centre) {pt_err = Point(0,0);}
 
         cout << "Diff X: " << pt_err.x << " Y: " << pt_err.y << endl;
 
@@ -245,7 +246,7 @@ int main()
         int yaw_val = PWM_NEUTRAL + (pt_err.x * PWM_RANGE / (IMG_WIDTH/2)); // Scales the yaw value to 1000-2000, 1500 as neutral
         cout << "Yaw: " << yaw_val << endl;
         gpioServo(PWM_PIN, yaw_val); // Send PWM pulses
- 
+
 
         // Display frame
         imshow("Contours", frame1.processed);
