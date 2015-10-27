@@ -32,13 +32,12 @@ struct frame
     Mat hsv;
     Mat thresholded;
     Mat processed;
-    Mat drawn_circle;
     vector<vector<Point> > contrs;
-    obj_point object;
+    obj_point mean_point;
 };
 
 
-void arm_quad()
+int arm_quad()
 {
     cout << "Arming Quadcopter... ";
     gpioServo(PWM_PIN, PWM_NEUTRAL);
@@ -47,9 +46,10 @@ void arm_quad()
     sleep(2);
     gpioServo(PWM_PIN, PWM_NEUTRAL);
     cout << "Done." << endl;
+    return 0;
 }
 
-void disarm_quad()
+int disarm_quad()
 {
     cout << "Disarming Quadcopter... ";
     gpioServo(PWM_PIN, PWM_NEUTRAL);
@@ -58,6 +58,7 @@ void disarm_quad()
     sleep(2);
     gpioServo(PWM_PIN, PWM_NEUTRAL);
     cout << "Done." << endl;
+    return 0;
 }
 
 
@@ -125,31 +126,34 @@ frame detect_obj (frame img, int hue, int sat, int val)
     // Contour the image
     findContours(img.processed, img.contrs, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE);
 
-    int contour_no=0, largest_contour_no, largest_contour_area=0;
+    // Create moments structures
+    vector<Moments> momts(img.contrs.size());
+    vector<Point2f> momt_centres(img.contrs.size());
+    float tot_size=0;
+    int contour_no=0;
+    Point2f tot_pt(0,0);
     // Iterate through the contours
     for(contour_no; contour_no < img.contrs.size(); contour_no++)
     {
-		// Find the largest contour
-		if(contourArea(img.contrs[contour_no]) > largest_contour_area)
-		{
-			largest_contour_area = contourArea(img.contrs[contour_no]);
-			largest_contour_no = contour_no;
-		}
-	}
-     
+        // Calculate moment of contour
+        momts[contour_no] = moments(img.contrs[contour_no],false);
+        // Calculate moment centre
+        momt_centres[contour_no] = Point2f(momts[contour_no].m10 / momts[contour_no].m00, momts[contour_no].m01 / momts[contour_no].m00);
+        // Add moment to sum
+        tot_pt += momt_centres[contour_no];
+        tot_size += contourArea(img.contrs[contour_no]);
+    }
+
     // If no contours found then mean point is 0
-    if(largest_contour_area == 0)
+    if(contour_no == 0)
     {
-	    img.object.pt = Point2f(0,0);
-	    img.object.size = 0;
+	img.mean_point.pt = Point2f(0,0);
+	img.mean_point.size= 0;
     }
     else
     {
-		// Find moments of largest contour
-		Moments obj_momts = moments(img.contrs[largest_contour_no], false);
-		// Calculate moment centre
-        img.object.pt = Point2f(obj_momts.m10 / obj_momts.m00, obj_momts.m01 / obj_momts.m00);
-        img.object.size = largest_contour_area;
+        img.mean_point.pt = Point2f(tot_pt.x / contour_no, tot_pt.y / contour_no);
+        img.mean_point.size = tot_size / contour_no;
     }
     return img;
 }
@@ -179,16 +183,12 @@ int main()
     createTrackbar("Threshold Hue", "Threshold", &threshHue, 180);
     createTrackbar("Threshold Sat", "Threshold", &threshSat, 255);
     createTrackbar("Threshold Val", "Threshold", &threshVal, 255);
-    cout << "Done." << endl;
 
    /***********************/
     /** INITIALISE PIGPIO **/
     /***********************/
-    cout << "Initialising PIGPIO and neutral throttle... ";
     gpioInitialise();
-    gpioServo(PWM_PIN, PWM_NEUTRAL);
-    sleep(2);
-    cout << "Done." << endl;
+    gpioServo(PWM_PIN,PWM_NEUTRAL);
 
 
     /*********************/
@@ -197,7 +197,7 @@ int main()
     int rept = 1;
     while (rept == 1)
     {
-        cout << "Taking preliminary image for colour recognition... (q to continue, r to restart, a to arm, d to disarm) ";
+        cout << "Done." << endl << "Taking preliminary image for colour recognition... (q to continue, r to restart, a to arm, d to disarm) ";
 
         frame1 = frame_capture(frame1);
 
@@ -207,12 +207,11 @@ int main()
         {
             frame1 = detect_obj(frame1, threshHue, threshSat, threshVal);
             // Draw circle on mean point
-            frame1.drawn_circle = frame1.captured.clone();
-            circle(frame1.drawn_circle, frame1.object.pt, sqrt(frame1.object.size/PI), Scalar(0,0,0));
+            circle(frame1.captured, frame1.mean_point.pt, sqrt(frame1.mean_point.size/PI), Scalar(0,0,0));
 
             imshow("Contours", frame1.processed);
             imshow("Threshold", frame1.thresholded);
-            imshow("Preview",frame1.drawn_circle);
+            imshow("Preview",frame1.captured);
 
             char c = waitKey(100);
             if (c == 113) // q pressed
@@ -226,7 +225,7 @@ int main()
             }
             else if (c == 114) // r pressed
             {
-                cout << "Restarting... " << endl;
+                cout << "Restarting..." << endl;
                 rept = 1;
                 break;
             }
@@ -252,7 +251,7 @@ int main()
 
         // Return keypoint distance from centre
         Point2f centre = Point(IMG_WIDTH/2, IMG_HEIGHT/2);
-        Point2f pt_err = centre - frame1.object.pt;
+        Point2f pt_err = centre - frame1.mean_point.pt;
         // If the object is off the screen, mean_point.pt == 0 so pt_err == centre.
         // This line eliminates the false result to keep the quad under control.
         if(pt_err == centre) {pt_err = Point(0,0);}
@@ -260,7 +259,7 @@ int main()
         cout << "Diff X: " << pt_err.x << " Y: " << pt_err.y << endl;
 
         // Draw circle on mean point
-        circle(frame1.captured, frame1.object.pt, sqrt(frame1.object.size/PI), Scalar(0,0,0));
+        circle(frame1.captured, frame1.mean_point.pt, sqrt(frame1.mean_point.size/PI), Scalar(0,0,0));
 
         /*****************/
         /** YAW CONTROL **/
@@ -274,13 +273,14 @@ int main()
         imshow("Contours", frame1.processed);
         imshow("Preview", frame1.captured);
 
+        // Exit if q pressed
         char c = waitKey(20);
-        if(c == 113) // q pressed
+        if(c == 113)
         {
             cout << "User exit." << endl;
             break;
         }
-        else if(c == 97) // a pressed
+        else if(c == 97)
         {
             arm_quad();
         }
