@@ -11,9 +11,9 @@
 #define IMG_HEIGHT 240
 #define PWM_NEUTRAL 1500
 #define PWM_REAL_RANGE 500
-#define PWM_RANGE 250
+#define PWM_ADJUST_RANGE 75
 #define PWM_PIN 17
-#define PI  3.1416
+#define PI  3.14
 
 using namespace cv;
 using namespace std;
@@ -136,7 +136,7 @@ frame detect_obj (frame img, int hue, int sat, int val)
 			largest_contour_no = contour_no;
 		}
 	}
-     
+
     // If no contours found then mean point is 0
     if(largest_contour_area == 0)
     {
@@ -173,7 +173,7 @@ int main()
     namedWindow("Preview", WINDOW_NORMAL);
     // HSV adjust window
     namedWindow("Threshold", WINDOW_NORMAL);
-    namedWindow("Contours", WINDOW_NORMAL);
+    //namedWindow("Contours", WINDOW_NORMAL);
 
     int threshHue=0, threshSat=0, threshVal=0;
     createTrackbar("Threshold Hue", "Threshold", &threshHue, 180);
@@ -206,14 +206,16 @@ int main()
         while (1)
         {
             frame1 = detect_obj(frame1, threshHue, threshSat, threshVal);
+
             // Draw circle on mean point
             frame1.drawn_circle = frame1.captured.clone();
             circle(frame1.drawn_circle, frame1.object.pt, sqrt(frame1.object.size/PI), Scalar(0,0,0));
 
-            imshow("Contours", frame1.processed);
+            //imshow("Contours", frame1.processed);
             imshow("Threshold", frame1.thresholded);
             imshow("Preview",frame1.drawn_circle);
 
+            // Get keypress from user
             char c = waitKey(100);
             if (c == 113) // q pressed
             {
@@ -240,6 +242,8 @@ int main()
             }
         }
     }
+    destroyWindow("Preview");
+    arm_quad();
 
 
     /*********************/
@@ -265,19 +269,21 @@ int main()
         /*****************/
         /** YAW CONTROL **/
         /*****************/
-        int yaw_val = PWM_NEUTRAL + (pt_err.x * PWM_RANGE / (IMG_WIDTH/2)); // Scales the yaw value to 1250-1750, 1500 as neutral
+        int yaw_val = PWM_NEUTRAL - (pt_err.x * PWM_ADJUST_RANGE / (IMG_WIDTH/2)); // Scales the yaw value
         cout << "Yaw: " << yaw_val << endl;
         gpioServo(PWM_PIN, yaw_val); // Send PWM pulses
 
 
         // Display frame
-        imshow("Contours", frame1.processed);
-        imshow("Preview", frame1.captured);
+        //imshow("Contours", frame1.processed);
+        //imshow("Preview", frame1.captured);
 
+        // Get keypress from the user
         char c = waitKey(20);
         if(c == 113) // q pressed
         {
             cout << "User exit." << endl;
+            disarm_quad();
             break;
         }
         else if(c == 97) // a pressed
@@ -294,9 +300,9 @@ int main()
     cout << "Releasing camera... " << endl;
     pi_camera.release();
     cout << "Releasing windows... " << endl;
-    destroyWindow("Contours");
-    destroyWindow("Preview");
-    destroyWindow("Threshold");
+    //destroyWindow("Contours");
+    //destroyWindow("Preview");
+    //destroyWindow("Threshold");
     cout << "Stopping PIGPIO..." << endl;
     gpioTerminate();
     cout << "Done." << endl;
