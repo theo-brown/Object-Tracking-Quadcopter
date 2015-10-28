@@ -4,11 +4,14 @@
 #include <thread>
 #include "opencv.hpp"
 #include "pi_camera.hpp"
+#include "quadcopter.hpp"
 #include "pid.hpp"
 
 using namespace cv;
 using namespace std;
 using namespace std::chrono;
+
+#define PI 3.14
 
 int main()
 {
@@ -17,9 +20,10 @@ int main()
     /****************/
     pid pid_yaw;
     pid_yaw.set_pt = IMG_WIDTH/2; // Set setpoint as the image centre
-    pid_yaw.kp = 5;
-    pid_yaw.ki = 0.0001;
-    pid_yaw.kd = 1;
+    pid_yaw.kp = 1;
+    pid_yaw.ki = 0;
+    pid_yaw.kd = 0;
+    int yaw_output = 1500;
 
     /*******************************/
     /** INITIALISE CAPTURE DEVICE **/
@@ -41,6 +45,16 @@ int main()
     createTrackbar("Threshold Sat", "Threshold", &threshSat, 255);
     createTrackbar("Threshold Val", "Threshold", &threshVal, 255);
     cout << "Done." << endl;
+    
+    /***********************/
+    /** INITIALISE PIGPIO **/
+    /***********************/
+    cout << "Initialising PIGPIO and neutral throttle... ";
+    gpioInitialise();
+    gpioServo(PWM_PIN, PWM_NEUTRAL);
+    this_thread::sleep_for(milliseconds(2000));
+    cout << "Done." << endl;
+    
 
     /*********************/
     /** COLOUR TRAINING **/
@@ -48,7 +62,7 @@ int main()
     int rept = 1;
     while (rept == 1)
     {
-        cout << "Taking preliminary image for colour recognition... (q to continue, r to restart) ";
+        cout << "Taking preliminary image for colour recognition... (q to continue, r to restart, a to arm, d to disarm) ";
 
         frame1 = frame_capture(frame1);
 
@@ -60,7 +74,7 @@ int main()
 
             // Draw circle on mean point
             Mat drawn_circle = frame1.captured.clone();
-            circle(drawn_circle, frame1.object.pt, sqrt(frame1.object.size/3.14), Scalar(0,0,0));
+            circle(drawn_circle, frame1.object.pt, sqrt(frame1.object.size/PI), Scalar(0,255,0));
 
             imshow("Threshold", frame1.thresholded);
             imshow("Preview", drawn_circle);
@@ -69,7 +83,7 @@ int main()
             char c = waitKey(100);
             if (c == 113) // q pressed
             {
-                cout << "Proceeding to object tracking. (q to exit)" << endl;
+                cout << "Proceeding to object tracking. (q to exit, a to arm, d to disarm) " << endl;
                 destroyWindow("Preview");
                 rept = 0;
                 break;
@@ -80,13 +94,20 @@ int main()
                 rept = 1;
                 break;
             }
+            else if (c == 97) // a pressed
+            {
+            	arm_quad();
+            }
+            else if (c == 100) // d pressed
+            {
+            	disarm_quad();
+            }
 		}
 	}
 
     /*********************/
     /** OBJECT TRACKING **/
     /*********************/
-    int yaw_val = 1500;
     while (1)
     {
         // Get start time
@@ -98,7 +119,7 @@ int main()
         frame1 = detect_obj(frame1, threshHue, threshSat, threshVal);
 
         // Draw circle on object point
-        circle(frame1.thresholded, frame1.object.pt, sqrt(frame1.object.size/3.14), Scalar(255,0,0));
+        circle(frame1.thresholded, frame1.object.pt, sqrt(frame1.object.size/PI), Scalar(0,255,0));
         imshow("Threshold", frame1.thresholded);
 
         // Get keypress from the user
@@ -107,7 +128,16 @@ int main()
         if(c == 113) // q pressed
         {
             cout << "User exit." << endl;
+            gpioServo(PWM_PIN, PWM_NEUTRAL);
             break;
+        }
+        else if(c == 97) // a pressed
+        {
+            arm_quad();
+        }
+        else if (c == 100) // d pressed
+        {
+            disarm_quad();
         }
         
         /*********/
@@ -121,13 +151,24 @@ int main()
         milliseconds elapsed_t = duration_cast<milliseconds>(end_t - start_t);
 
         // Calculate pid values
-        pid_calculate(pid_yaw, elapsed_t);
+        pid_yaw = pid_calculate(pid_yaw, elapsed_t);
 
         /*****************/
         /** YAW CONTROL **/
         /*****************/
-        yaw_val += pid_yaw.output;
-        cout << "Yaw: " << yaw_val << endl;
+        yaw_output += pid_yaw.output_adjust;
+        cout << "Yaw: " << yaw_output << endl;
+        
+        if(yaw_output > PWM_NEUTRAL + PWM_RANGE)
+        {
+			yaw_output = PWM_NEUTRAL + PWM_RANGE;
+		}
+		else if(yaw_output < PWM_NEUTRAL - PWM_RANGE)
+		{
+			yaw_output = PWM_NEUTRAL - PWM_RANGE;
+		}
+        cout << "Yaw actual: " << yaw_output << endl;
+        gpioServo(PWM_PIN, yaw_output); // Send PWM pulses 
     }
 
     // Clean up
@@ -135,6 +176,8 @@ int main()
     pi_camera.release();
     cout << "Releasing windows... " << endl;
     destroyWindow("Threshold");
+    cout << "Stopping PIGPIO..." << endl;
+    gpioTerminate();
     cout << "Done." << endl;
 
     return 0;

@@ -20,8 +20,7 @@ struct pid
 	float input;
 	float set_pt;
 	float prev_error = 0;
-	float prev_input = 0;
-	float output;
+	int output_adjust;
 };
 
 
@@ -44,22 +43,20 @@ pid pid_calculate(pid pid_a, milliseconds time_elapsed)
 	cout << "P: " << pid_a.P;
 
 	// Add error to total error sum
-	pid_a.I += pid_a.P * sample_rate_ms.count();
+	pid_a.I += pid_a.P * static_cast<float>(sample_rate_ms.count());
 	cout << " I: " << pid_a.I;
 	
 	// Calculate rate of change of error
-	//pid_a.D = (pid_a.P - pid_a.prev_error) / sample_rate_ms.count();
+	pid_a.D = (pid_a.P - pid_a.prev_error) / static_cast<float>(sample_rate_ms.count());
 	// Alternative method - rate of change of input
-	pid_a.D = -(pid_a.input - pid_a.prev_input) / sample_rate_ms.count();
 	cout << " D: " << pid_a.D << endl;
 	
 	// Set previous error
 	pid_a.prev_error = pid_a.P;
-	pid_a.prev_input = pid_a.input;
+		
+	pid_a.output_adjust = static_cast<int>((pid_a.P*pid_a.kp) + (pid_a.I*pid_a.ki) + (pid_a.D*pid_a.kd));
 	
-	pid_a.output = (pid_a.P*pid_a.kp) + (pid_a.I*pid_a.ki) + (pid_a.D*pid_a.kd);
-	
-	cout << "PID: " << pid_a.output << endl;
+	cout << "PID adjustment: " << pid_a.output_adjust << endl;
 
     return pid_a;
 }
