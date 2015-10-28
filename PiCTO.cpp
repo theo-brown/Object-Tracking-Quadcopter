@@ -1,21 +1,21 @@
 #include <iostream>
 #include <math.h>
-#include "opencv2/core/core.hpp"
+/*#include "opencv2/core/core.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/features2d/features2d.hpp"
 #include "raspicam/raspicam_cv.h"
-#include <pigpio.h>
+#include <pigpio.h>*/
 #include "opencv.hpp"
 #include "quadcopter.hpp"
 #include "pi_camera.hpp"
-
+/*
 #define IMG_WIDTH 320
 #define IMG_HEIGHT 240
 #define PWM_NEUTRAL 1500
 #define PWM_REAL_RANGE 500
 #define PWM_ADJUST_RANGE 75
-#define PWM_PIN 17
+#define PWM_PIN 17*/
 #define PI  3.14
 
 using namespace cv;

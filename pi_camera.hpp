@@ -1,7 +1,9 @@
 #include <iostream>
 #include "opencv2/core/core.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
 #include "raspicam/raspicam_cv.h"
+
+#define IMG_WIDTH 320
+#define IMG_HEIGHT 240
 
 using namespace cv;
 using namespace std;
