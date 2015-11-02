@@ -1,4 +1,6 @@
 #include <iostream>
+#include <thread>
+#include <chrono>
 #include "opencv2/core/core.hpp"
 #include "raspicam/raspicam_cv.h"
 
@@ -7,6 +9,7 @@
 
 using namespace cv;
 using namespace std;
+using namespace std::chrono;
 
 raspicam::RaspiCam_Cv pi_camera;
 
@@ -18,14 +21,16 @@ int camera_init()
     pi_camera.set(CV_CAP_PROP_FORMAT, CV_8UC3);
 
     pi_camera.open();
-    sleep(1);
+    this_thread::sleep_for(milliseconds(1000));
+
 
     if (!pi_camera.isOpened())
     {
         cout << "Failed to access Pi Camera." << endl;
         return -1;
     }
-    sleep(2);
+    this_thread::sleep_for(milliseconds(2000));
+
     cout << "Done." << endl;
 
     return 0;

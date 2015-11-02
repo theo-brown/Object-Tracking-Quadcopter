@@ -8,6 +8,7 @@
 //Code optimisation / compiling for four cores / multi-threading - Code slimmed down in numerous ways (reducing image size, reducing number of operations done on images, decrease number of calculations of contour moments, stopped displaying full images during object tracking process)
 //Exchange blob detector for findContours - done
 
-Implement some form of PID control/feedback loop to tune down oscillations and make object tracking viable
+//Implement some form of PID control/feedback loop to tune down oscillations and make object tracking viable
 //Check to see whether making header files has worked, compile everything
-Some weird integer float conversion stuff is happen
+//Some weird integer float conversion stuff is happen
+Now getting big oscillations in tracking - failing to compensate for momentum etc?
