@@ -21,7 +21,7 @@ int main()
     pid pid_yaw;
     pid_yaw.set_pt = IMG_WIDTH/2; // Set setpoint as the image centre
     pid_yaw.kp = 0.669;
-    pid_yaw.ki = 0;
+    pid_yaw.ki = 0.00001;
     pid_yaw.kd = 0;
     int yaw_output = PWM_NEUTRAL;
 
@@ -108,18 +108,18 @@ int main()
     /*********************/
     /** OBJECT TRACKING **/
     /*********************/
+    // Get start time
+    time_point<high_resolution_clock> start_t = high_resolution_clock::now();
+    time_point<high_resolution_clock> end_t;
     while (1)
     {
-        // Get start time
-        time_point<high_resolution_clock> start_t = high_resolution_clock::now();
-
         // Capture frame
         frame1 = frame_capture(frame1);
         // Detect objects in frame
         frame1 = detect_obj(frame1, threshHue, threshSat, threshVal);
 
         // Get keypress from the user
-        char c = waitKey(20); //if this doesn't work, change this back to 20
+        char c = waitKey(15);
 
         if(c == 113) // q pressed
         {
@@ -145,19 +145,19 @@ int main()
 	}
 	else if (c == 105) // i pressed
 	{
-	    pid_yaw.ki += 0.01;
+	    pid_yaw.ki += 0.00001;
 	}
 	else if (c == 117) // u pressed
 	{
-            pid_yaw.ki -= 0.01;
+            pid_yaw.ki -= 0.00001;
 	}
 	else if (c == 121) // y pressed
 	{
-	    pid_yaw.kd += 0.01;
+	    pid_yaw.kd += 0.001;
 	}
 	else if (c == 116) // t pressed
 	{
-            pid_yaw.kd -= 0.01;
+            pid_yaw.kd -= 0.001;
 	}
         else if (c == 114) // r pressed
         {
@@ -167,13 +167,15 @@ int main()
         /*********/
         /** PID **/
         /*********/
+        // Input x coordinate as process variable to PID
         pid_yaw.input = frame1.object.pt.x;
 
         // Get end time
-        time_point<high_resolution_clock> end_t = high_resolution_clock::now();
-
+        end_t = high_resolution_clock::now();
         milliseconds elapsed_t = duration_cast<milliseconds>(end_t - start_t);
-
+        cout << "Time: " << elapsed_t.count() << endl;
+        // Restart timer
+        start_t = high_resolution_clock::now();
         // Calculate pid values
         pid_yaw = pid_calculate(pid_yaw, elapsed_t);
 
@@ -181,19 +183,12 @@ int main()
         /** YAW CONTROL **/
         /*****************/
         yaw_output = PWM_NEUTRAL - pid_yaw.output_adjust;
-        if(yaw_output > 2000)
-        {
-            yaw_output = 2000;
-        }
-        if(yaw_output < -2000)
-        {
-            yaw_output = -2000;
-        }
         cout << "Yaw: " << yaw_output << endl;
         gpioServo(PWM_PIN, yaw_output); // Send PWM pulses
     }
 
     // Clean up
+    //disarm_quad();
     cout << "Releasing camera... " << endl;
     pi_camera.release();
     cout << "Releasing windows... " << endl;

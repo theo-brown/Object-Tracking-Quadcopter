@@ -8,9 +8,9 @@ using namespace cv;
 using namespace std;
 
 // Create object for eroding (2x2 rectangle)
-//Mat erode_rect = getStructuringElement(MORPH_RECT,Size(2,2));
+Mat erode_rect = getStructuringElement(MORPH_RECT,Size(2,2));
 // Create object for dilating (5x5 rectangle)
-//Mat dilate_rect = getStructuringElement(MORPH_RECT,Size(5,5));
+Mat dilate_rect = getStructuringElement(MORPH_RECT,Size(5,5));
 
 struct obj_point
 {
@@ -37,15 +37,16 @@ frame detect_obj (frame img, int hue, int sat, int val)
     // Threshold the frame so only specified HSV displayed
     inRange(img.hsv, Scalar(hue-7, sat, val), Scalar(hue+7, 255, 255), img.thresholded);
 
-    // Erode and dilate image
-    //erode(img.thresholded, img.thresholded, erode_rect, Point(-1,-1), 2);
-    //dilate(img.thresholded, img.thresholded, dilate_rect, Point(-1,-1), 2);
+    // Erode and dilate image (takes little time)
+    erode(img.thresholded, img.thresholded, erode_rect, Point(-1,-1), 2);
+    dilate(img.thresholded, img.thresholded, dilate_rect, Point(-1,-1), 2);
 
     // Copy it for modifying - findContours modifies the image
-    img.thresholded.copyTo(img.processed);
+    //img.thresholded.copyTo(img.processed);
 
     // Contour the image
-    findContours(img.processed, img.contrs, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE);
+    //findContours(img.processed, img.contrs, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE);
+    findContours(img.thresholded, img.contrs, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE);
 
     int contour_no=0, largest_contour_no, largest_contour_area=0;
     // Iterate through the contours

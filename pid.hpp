@@ -4,10 +4,12 @@
 #include <chrono>
 #include <thread>
 
+#define I_LIMIT 50
+
 using namespace std;
 using namespace std::chrono;
 
-milliseconds sample_rate_ms(190);
+milliseconds sample_rate_ms(202);
 
 struct pid
 {
@@ -67,17 +69,17 @@ pid pid_calculate(pid pid_a, milliseconds time_elapsed)
 
     // Add error to total error sum
     pid_a.error_sum += pid_a.error * static_cast<float>(sample_rate_ms.count());
-    // Catch any error_sum values resulting in I outside of determined range
-    if(pid_a.error_sum > (PWM_RANGE/pid_a.ki))
-    {
-        pid_a.error_sum = PWM_RANGE;
-    }
-    if(pid_a.error_sum < -(PWM_RANGE/pid_a.ki))
-    {
-        pid_a.error_sum = -PWM_RANGE;
-    }
     // Calculate I value
     pid_a.I = pid_a.error_sum * pid_a.ki;
+    // Catch any error_sum values resulting in I outside of determined range
+    if(pid_a.I > I_LIMIT)
+    {
+        pid_a.error_sum = I_LIMIT/pid_a.ki;
+    }
+    else if(pid_a.error_sum < -I_LIMIT and pid_a.ki != 0)
+    {
+        pid_a.error_sum = -I_LIMIT/pid_a.ki;
+    }
     cout << " I: " << pid_a.I;
 
     // Calculate D value (rate of change of error)
@@ -88,15 +90,8 @@ pid pid_calculate(pid pid_a, milliseconds time_elapsed)
 
     // Set output
     pid_a.output_adjust = static_cast<int>(pid_a.P + pid_a.I + pid_a.D);
-    if(pid_a.output_adjust < 4 or (pid_a.output_adjust > -4 and pid_a.output_adjust < 0) )
-    {
-        pid_a.output_adjust = 0;
-    }
 
     cout << "PID adjustment: " << pid_a.output_adjust << endl;
-    cout << "kP: " << pid_a.kp;
-    cout << " kI: " << pid_a.ki;
-    cout << " kD: " << pid_a.kd << endl;
 
     return pid_a;
 }
