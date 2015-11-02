@@ -21,7 +21,7 @@ int main()
     pid pid_yaw;
     pid_yaw.set_pt = IMG_WIDTH/2; // Set setpoint as the image centre
     pid_yaw.kp = 0.669;
-    pid_yaw.ki = 0.00001;
+    pid_yaw.ki = 0.00004;
     pid_yaw.kd = 0;
     int yaw_output = PWM_NEUTRAL;
 
@@ -153,11 +153,11 @@ int main()
 	}
 	else if (c == 121) // y pressed
 	{
-	    pid_yaw.kd += 0.001;
+	    pid_yaw.kd += 0.1;
 	}
 	else if (c == 116) // t pressed
 	{
-            pid_yaw.kd -= 0.001;
+            pid_yaw.kd -= 0.1;
 	}
         else if (c == 114) // r pressed
         {
