@@ -139,6 +139,22 @@ int main()
         {
             disarm_quad();
         }
+        else if (c == 112) // p pressed
+        {
+			pid_yaw.kp += 0.1;
+		}
+		else if (c == 111) // o pressed
+		{
+			pid_yaw.kp -= 0.1;
+		}
+		else if (c == 105) // i pressed
+		{
+			pid_yaw.ki += 0.1;
+		}
+		else if (c == 117) // u pressed
+		{
+			pid_yaw.ki -= 0.1;
+		}
         
         /*********/
         /** PID **/
