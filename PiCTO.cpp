@@ -118,12 +118,8 @@ int main()
         // Detect objects in frame
         frame1 = detect_obj(frame1, threshHue, threshSat, threshVal);
 
-        // Draw circle on object point
-        //circle(frame1.thresholded, frame1.object.pt, sqrt(frame1.object.size/PI), Scalar(0,255,0));
-        //imshow("Threshold", frame1.thresholded);
-
         // Get keypress from the user
-        char c = waitKey(10);
+        char c = waitKey(20); //if this doesn't work, change this back to 20
 
         if(c == 113) // q pressed
         {
@@ -163,6 +159,10 @@ int main()
 	{
             pid_yaw.kd -= 0.01;
 	}
+        else if (c == 114) // r pressed
+        {
+            pid_yaw.error_sum = 0; // Reset summing so integral does not be massive
+        }
 
         /*********/
         /** PID **/
@@ -181,18 +181,16 @@ int main()
         /** YAW CONTROL **/
         /*****************/
         yaw_output = PWM_NEUTRAL - pid_yaw.output_adjust;
-        cout << "Yaw: " << yaw_output << endl;
-
-        if(yaw_output > PWM_NEUTRAL + PWM_RANGE)
+        if(yaw_output > 2000)
         {
-            yaw_output = PWM_NEUTRAL;
-	}
-	else if(yaw_output < PWM_NEUTRAL - PWM_RANGE)
-	{
-	    yaw_output = PWM_NEUTRAL;
-	}
-        cout << "Yaw actual: " << yaw_output << endl;
-        gpioServo(PWM_PIN, yaw_output); // Send PWM pulses 
+            yaw_output = 2000;
+        }
+        if(yaw_output < -2000)
+        {
+            yaw_output = -2000;
+        }
+        cout << "Yaw: " << yaw_output << endl;
+        gpioServo(PWM_PIN, yaw_output); // Send PWM pulses
     }
 
     // Clean up

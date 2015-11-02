@@ -7,19 +7,21 @@
 using namespace std;
 using namespace std::chrono;
 
-milliseconds sample_rate_ms(160);
+milliseconds sample_rate_ms(190);
 
 struct pid
 {
-    float P = 0;
-    float I = 0;
-    float D = 0;
+    float input;
+    float set_pt;
+    float error;
+    float error_sum = 0;
+    float prev_error;
+    float P;
+    float I;
+    float D;
     float kp = 1.0;
     float ki = 1.0;
     float kd = 1.0;
-    float input;
-    float set_pt;
-    float prev_error = 0;
     int output_adjust;
 };
 
@@ -41,32 +43,60 @@ pid pid_calculate(pid pid_a, milliseconds time_elapsed)
     // Calculate P value (error)
     if(pid_a.input == 0)
     {
-        pid_a.P == 0;
+        pid_a.error == 0;
         cout << "No input to PID." << endl;
     }
     else
     {
-        pid_a.P = pid_a.set_pt - pid_a.input;
-        cout << "kp*P: " << pid_a.P*pid_a.kd;
+        // Calculate error
+        pid_a.error = pid_a.set_pt - pid_a.input;
+
+        // Calculate P value
+        pid_a.P = pid_a.error * pid_a.kp;
+        cout << "P: " << pid_a.P;
+        // Catch any P values outside of determined range
+        if(pid_a.P > PWM_RANGE)
+        {
+            pid_a.P = PWM_RANGE;
+        }
+        if(pid_a.P <  -PWM_RANGE)
+        {
+            pid_a.P = -PWM_RANGE;
+        }
     }
 
     // Add error to total error sum
-    pid_a.I += pid_a.P * static_cast<float>(sample_rate_ms.count())/1000;
-    cout << " ki*I: " << pid_a.I*pid_a.ki;
+    pid_a.error_sum += pid_a.error * static_cast<float>(sample_rate_ms.count());
+    // Catch any error_sum values resulting in I outside of determined range
+    if(pid_a.error_sum > (PWM_RANGE/pid_a.ki))
+    {
+        pid_a.error_sum = PWM_RANGE;
+    }
+    if(pid_a.error_sum < -(PWM_RANGE/pid_a.ki))
+    {
+        pid_a.error_sum = -PWM_RANGE;
+    }
+    // Calculate I value
+    pid_a.I = pid_a.error_sum * pid_a.ki;
+    cout << " I: " << pid_a.I;
 
-    // Calculate rate of change of error
-    pid_a.D = (pid_a.P - pid_a.prev_error) / (static_cast<float>(sample_rate_ms.count())/1000);
-    cout << " ki*D: " << pid_a.D*pid_a.kd << endl;
-
+    // Calculate D value (rate of change of error)
+    pid_a.D = pid_a.kd * (pid_a.P - pid_a.prev_error) / (static_cast<float>(sample_rate_ms.count()));
+    cout << " D: " << pid_a.D << endl;
     // Set previous error
-    pid_a.prev_error = pid_a.P;
+    pid_a.prev_error = pid_a.error;
 
-    pid_a.output_adjust = static_cast<int>((pid_a.P*pid_a.kp) + (pid_a.I*pid_a.ki) + (pid_a.D*pid_a.kd));
+    // Set output
+    pid_a.output_adjust = static_cast<int>(pid_a.P + pid_a.I + pid_a.D);
+    if(pid_a.output_adjust < 4 or (pid_a.output_adjust > -4 and pid_a.output_adjust < 0) )
+    {
+        pid_a.output_adjust = 0;
+    }
 
     cout << "PID adjustment: " << pid_a.output_adjust << endl;
-    cout << "kP: " << pid_a.kp << endl;
-    cout << "kI: " << pid_a.ki << endl;
-    cout << "kD: " << pid_a.kd << endl;
+    cout << "kP: " << pid_a.kp;
+    cout << " kI: " << pid_a.ki;
+    cout << " kD: " << pid_a.kd << endl;
 
     return pid_a;
 }

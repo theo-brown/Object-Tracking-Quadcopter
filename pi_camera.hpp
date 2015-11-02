@@ -4,8 +4,8 @@
 #include "opencv2/core/core.hpp"
 #include "raspicam/raspicam_cv.h"
 
-#define IMG_WIDTH 320
-#define IMG_HEIGHT 240
+#define IMG_WIDTH 256
+#define IMG_HEIGHT 144
 
 using namespace cv;
 using namespace std;
@@ -49,7 +49,7 @@ frame frame_capture(frame img)
     }
 
     resize(img.captured, img.captured, Size(IMG_WIDTH,IMG_HEIGHT), 0, 0, CV_INTER_AREA);
-    flip(img.captured, img.captured, 0);
+    //flip(img.captured, img.captured, 0);
 
     return img;
 }

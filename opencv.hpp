@@ -7,6 +7,11 @@
 using namespace cv;
 using namespace std;
 
+// Create object for eroding (2x2 rectangle)
+//Mat erode_rect = getStructuringElement(MORPH_RECT,Size(2,2));
+// Create object for dilating (5x5 rectangle)
+//Mat dilate_rect = getStructuringElement(MORPH_RECT,Size(5,5));
+
 struct obj_point
 {
     Point2f pt;
@@ -23,18 +28,6 @@ struct frame
     obj_point object;
 };
 
-Mat morph_mat(Mat src, Mat dst)
-{
-    // Create object for eroding (2x2 rectangle)
-    Mat erode_rect = getStructuringElement(MORPH_RECT,Size(2,2));
-    // Create object for dilating (5x5 rectangle)
-    Mat dilate_rect = getStructuringElement(MORPH_RECT,Size(5,5));
-    // Perform erosion and dilation on image 
-    erode(src, dst, erode_rect, Point(-1,-1), 2);
-    dilate(dst, dst, dilate_rect, Point(-1,-1), 2);
-    return dst;
-}
-
 frame detect_obj (frame img, int hue, int sat, int val)
 {
     // Convert to HSV
@@ -43,9 +36,12 @@ frame detect_obj (frame img, int hue, int sat, int val)
 
     // Threshold the frame so only specified HSV displayed
     inRange(img.hsv, Scalar(hue-7, sat, val), Scalar(hue+7, 255, 255), img.thresholded);
+
     // Erode and dilate image
-    morph_mat(img.thresholded, img.thresholded);
-    // Copy it for modifying
+    //erode(img.thresholded, img.thresholded, erode_rect, Point(-1,-1), 2);
+    //dilate(img.thresholded, img.thresholded, dilate_rect, Point(-1,-1), 2);
+
+    // Copy it for modifying - findContours modifies the image
     img.thresholded.copyTo(img.processed);
 
     // Contour the image
@@ -68,13 +64,13 @@ frame detect_obj (frame img, int hue, int sat, int val)
     if(largest_contour_area == 0)
     {
         img.object.pt = Point2f(0,0);
-	    img.object.size = 0;
+	img.object.size = 0;
     }
     else
     {
-	    // Find moments of largest contour
-	    Moments obj_momts = moments(img.contrs[largest_contour_no], false);
-	    // Calculate moment centre
+	// Find moments of largest contour
+	Moments obj_momts = moments(img.contrs[largest_contour_no], false);
+	// Calculate moment centre
         img.object.pt = Point2f(obj_momts.m10 / obj_momts.m00, obj_momts.m01 / obj_momts.m00);
         img.object.size = largest_contour_area;
     }
