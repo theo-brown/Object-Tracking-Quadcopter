@@ -43,34 +43,27 @@ pid pid_calculate(pid pid_a, milliseconds time_elapsed)
         return pid_a;
     }
 */
+    cout << "Input to PID: " << pid_a.input;
     if(time_elapsed.count() > sample_rate_ms.count())
     {
-        cout << "Warning: loop time is longer than sample time" << endl;
+        cout << " Warning: loop time is longer than sample time ";
     }
 
     // Calculate P value (error)
     if(pid_a.input == 0)
     {
         pid_a.error == 0;
-        cout << "No input to PID." << endl;
+        cout << " No input to PID. ";
     }
     else
     {
         // Calculate error
         pid_a.error = pid_a.set_pt - pid_a.input;
+        cout << "Error " << pid_a.error << endl;
 
         // Calculate P value
         pid_a.P = pid_a.error * pid_a.kp;
         cout << "P: " << pid_a.P;
-        // Catch any P values outside of determined range
-        if(pid_a.P > PWM_RANGE)
-        {
-            pid_a.P = PWM_RANGE;
-        }
-        if(pid_a.P <  -PWM_RANGE)
-        {
-            pid_a.P = -PWM_RANGE;
-        }
     }
 
     // Add error to total error sum
@@ -83,7 +76,7 @@ pid pid_calculate(pid pid_a, milliseconds time_elapsed)
     {
         pid_a.error_sum = I_LIMIT/pid_a.ki;
     }
-    else if(pid_a.error_sum < -I_LIMIT and pid_a.ki != 0)
+    else if(pid_a.I < -I_LIMIT)
     {
         pid_a.error_sum = -I_LIMIT/pid_a.ki;
     }
