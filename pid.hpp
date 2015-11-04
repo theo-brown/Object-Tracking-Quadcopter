@@ -90,6 +90,10 @@ pid pid_calculate(pid pid_a, milliseconds time_elapsed)
 
     // Set output
     pid_a.output_adjust = static_cast<int>(pid_a.P + pid_a.I + pid_a.D);
+    if(pid_a.output_adjust < 2 and pid_a.output_adjust > -2)
+    {
+        pid_a.output_adjust = 0;
+    }
 
     cout << "PID adjustment: " << pid_a.output_adjust << endl;
 

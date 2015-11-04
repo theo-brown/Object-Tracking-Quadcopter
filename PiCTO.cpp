@@ -22,7 +22,7 @@ int main()
     pid_yaw.set_pt = IMG_WIDTH/2; // Set setpoint as the image centre
     pid_yaw.kp = 0.669;
     pid_yaw.ki = 0.00004;
-    pid_yaw.kd = 0;
+    pid_yaw.kd = 4.9;
     int yaw_output = PWM_NEUTRAL;
 
     /*******************************/
