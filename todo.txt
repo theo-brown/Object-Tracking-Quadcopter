@@ -12,3 +12,21 @@
 //Check to see whether making header files has worked, compile everything
 //Some weird integer float conversion stuff is happen
 Now getting big oscillations in tracking - failing to compensate for momentum etc?
+
+
+
+SPEED:
+Added in time printing to find slowest part
+two slowest sections were frame_capture (105ms) and pid_calculate (84ms) (obj_detect=9ms) t=198
+Changed resize frame to 'linear' (size 256x144) -> f_c=39 o_d=9 p_c=116 t=164
+Changed size to 320x240 (resize linear)-> f_c=82 o_d=32 p_c=84 t=198
+changed resize 'nearest' size 256x144 -> f_c=39 o_d=9 p_c=150 t=198 
+
+therefore ideal appears to be linear,256x144
+could get faster using gpu acceleration but not realsitic on raspi - wrong architecture
+
+*** was failing to ignore the extra sleep calls which is why increase p_c time
+removed the restrictions on loop time to sample time so that loop can be faster - speed more important?
+
+
+*** will require retuning after speed adjustments?

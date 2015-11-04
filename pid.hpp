@@ -9,7 +9,7 @@
 using namespace std;
 using namespace std::chrono;
 
-milliseconds sample_rate_ms(202);
+milliseconds sample_rate_ms(110);
 
 struct pid
 {
@@ -30,6 +30,7 @@ struct pid
 
 pid pid_calculate(pid pid_a, milliseconds time_elapsed)
 {
+/*
     // Ensure that sample rate has elapsed
     milliseconds t_diff = sample_rate_ms - time_elapsed;
     if(t_diff.count() > 0)
@@ -40,6 +41,11 @@ pid pid_calculate(pid pid_a, milliseconds time_elapsed)
     {
         cout << "Time difference is negative; sample rate too low" << endl;
         return pid_a;
+    }
+*/
+    if(time_elapsed.count() > sample_rate_ms.count())
+    {
+        cout << "Warning: loop time is longer than sample time" << endl;
     }
 
     // Calculate P value (error)
@@ -68,7 +74,8 @@ pid pid_calculate(pid pid_a, milliseconds time_elapsed)
     }
 
     // Add error to total error sum
-    pid_a.error_sum += pid_a.error * static_cast<float>(sample_rate_ms.count());
+    //pid_a.error_sum += pid_a.error * static_cast<float>(sample_rate_ms.count());
+    pid_a.error_sum += pid_a.error * static_cast<float>(time_elapsed.count());
     // Calculate I value
     pid_a.I = pid_a.error_sum * pid_a.ki;
     // Catch any error_sum values resulting in I outside of determined range
@@ -83,7 +90,8 @@ pid pid_calculate(pid pid_a, milliseconds time_elapsed)
     cout << " I: " << pid_a.I;
 
     // Calculate D value (rate of change of error)
-    pid_a.D = pid_a.kd * (pid_a.P - pid_a.prev_error) / (static_cast<float>(sample_rate_ms.count()));
+    //pid_a.D = pid_a.kd * (pid_a.P - pid_a.prev_error) / (static_cast<float>(sample_rate_ms.count()));
+    pid_a.D = pid_a.kd * (pid_a.P - pid_a.prev_error) / time_elapsed.count();
     cout << " D: " << pid_a.D << endl;
     // Set previous error
     pid_a.prev_error = pid_a.error;

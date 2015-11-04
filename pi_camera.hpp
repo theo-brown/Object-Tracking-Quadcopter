@@ -48,7 +48,7 @@ frame frame_capture(frame img)
         return img;
     }
 
-    resize(img.captured, img.captured, Size(IMG_WIDTH,IMG_HEIGHT), 0, 0, CV_INTER_AREA);
+    resize(img.captured, img.captured, Size(IMG_WIDTH,IMG_HEIGHT), 0, 0, INTER_LINEAR);
     //flip(img.captured, img.captured, 0);
 
     return img;
