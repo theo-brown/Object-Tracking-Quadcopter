@@ -41,11 +41,6 @@ frame detect_obj (frame img, int hue, int sat, int val)
     erode(img.thresholded, img.thresholded, erode_rect, Point(-1,-1), 2);
     dilate(img.thresholded, img.thresholded, dilate_rect, Point(-1,-1), 2);
 
-    // Copy it for modifying - findContours modifies the image
-    //img.thresholded.copyTo(img.processed);
-
-    // Contour the image
-    //findContours(img.processed, img.contrs, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE);
     findContours(img.thresholded, img.contrs, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE);
 
     int contour_no=0, largest_contour_no, largest_contour_area=0;

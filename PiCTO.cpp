@@ -3,8 +3,8 @@
 #include <chrono>
 #include <thread>
 #include "opencv.hpp"
-#include "pi_camera.hpp"
-#include "quadcopter.hpp"
+#include "camera.hpp"
+#include "quad.hpp"
 #include "pid.hpp"
 
 using namespace cv;
@@ -13,17 +13,6 @@ using namespace std::chrono;
 
 #define PI 3.14
 
-/*
-TIME COUNT FUNCTION USED FOR CODE PROFILING
-time_point<high_resolution_clock> time_count(time_point<high_resolution_clock> previous_time)
-{
-    time_point<high_resolution_clock> t1 = high_resolution_clock::now();
-    milliseconds t_change = duration_cast<milliseconds>(t1 - previous_time);
-    cout << "Time: " << t_change.count() << endl;
-    return t1;
-}
-*/
-
 int main()
 {
     /****************/
@@ -31,11 +20,9 @@ int main()
     /****************/
     pid pid_yaw;
     pid_yaw.set_pt = IMG_WIDTH/2; // Set setpoint as the image centre
-    pid_yaw.kp = 0.683;
-    pid_yaw.ki = 0.00016;
-    pid_yaw.kd = 2.8;
-    //pid_yaw.ki = 0.00004;
-    //pid_yaw.kd = 4.9;
+    pid_yaw.kp = 0.702;
+    pid_yaw.ki = 0.00006;
+    pid_yaw.kd = 4.9;
     int yaw_output = PWM_NEUTRAL;
 
     /*******************************/
@@ -124,17 +111,13 @@ int main()
     // Get start time
     time_point<high_resolution_clock> start_t = high_resolution_clock::now();
     time_point<high_resolution_clock> end_t;
-    //time_point<high_resolution_clock> t_prev = high_resolution_clock::now();
+    milliseconds elapsed_t;
     while (1)
     {
         // Capture frame
         frame1 = frame_capture(frame1);
-        //cout << "Post frame cap ";
-        //t_prev = time_count(t_prev);
         // Detect objects in frame
         frame1 = detect_obj(frame1, threshHue, threshSat, threshVal);
-        //cout << "Post obj_detect ";
-        //t_prev = time_count(t_prev);
 
         // Get keypress from the user
         char c = waitKey(15);
@@ -190,14 +173,12 @@ int main()
 
         // Get end time
         end_t = high_resolution_clock::now();
-        milliseconds elapsed_t = duration_cast<milliseconds>(end_t - start_t);
+        elapsed_t = duration_cast<milliseconds>(end_t - start_t);
         cout << "LOOP TIME: " << elapsed_t.count() << endl;
         // Restart timer
         start_t = high_resolution_clock::now();
         // Calculate pid values
         pid_yaw = pid_calculate(pid_yaw, elapsed_t);
-        //cout << "Post PID ";
-        //t_prev = time_count(t_prev);
 
         /*****************/
         /** YAW CONTROL **/
@@ -208,7 +189,6 @@ int main()
     }
 
     // Clean up
-    //disarm_quad();
     cout << "Releasing camera... " << endl;
     pi_camera.release();
     cout << "Releasing windows... " << endl;

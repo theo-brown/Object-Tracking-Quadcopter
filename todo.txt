@@ -11,7 +11,7 @@
 //Implement some form of PID control/feedback loop to tune down oscillations and make object tracking viable
 //Check to see whether making header files has worked, compile everything
 //Some weird integer float conversion stuff is happen
-Now getting big oscillations in tracking - failing to compensate for momentum etc?
+//Now getting big oscillations in tracking - failing to compensate for momentum etc? need tuning.
 
 
 
@@ -25,8 +25,11 @@ changed resize 'nearest' size 256x144 -> f_c=39 o_d=9 p_c=150 t=198
 therefore ideal appears to be linear,256x144
 could get faster using gpu acceleration but not realsitic on raspi - wrong architecture
 
-*** was failing to ignore the extra sleep calls which is why increase p_c time
-removed the restrictions on loop time to sample time so that loop can be faster - speed more important?
+//*** was failing to ignore the extra sleep calls which is why increase p_c time
+//removed the restrictions on loop time to sample time so that loop can be faster - speed more important?
+// -> Yes.
 
+// will require retuning after speed adjustments? in process
 
-*** will require retuning after speed adjustments?
+//Increase acceptable error band? Change to if error < x -> x=1 - possible improvement?
+//Increase I limit? I rarely reaches i limit, makes no change

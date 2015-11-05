@@ -5,11 +5,10 @@
 #include <thread>
 
 #define I_LIMIT 50
+#define MAX_LOOP_TIME 110
 
 using namespace std;
 using namespace std::chrono;
-
-milliseconds sample_rate_ms(110);
 
 struct pid
 {
@@ -17,7 +16,7 @@ struct pid
     float set_pt;
     float error;
     float error_sum = 0;
-    float prev_error;
+    float prev_error = 0;
     float P;
     float I;
     float D;
@@ -30,21 +29,7 @@ struct pid
 
 pid pid_calculate(pid pid_a, milliseconds time_elapsed)
 {
-/*
-    // Ensure that sample rate has elapsed
-    milliseconds t_diff = sample_rate_ms - time_elapsed;
-    if(t_diff.count() > 0)
-    {
-        this_thread::sleep_for(t_diff);
-    }
-    else if(t_diff.count() < 0)
-    {
-        cout << "Time difference is negative; sample rate too low" << endl;
-        return pid_a;
-    }
-*/
-    cout << "Input to PID: " << pid_a.input;
-    if(time_elapsed.count() > sample_rate_ms.count())
+    if(time_elapsed.count() > MAX_LOOP_TIME)
     {
         cout << " Warning: loop time is longer than sample time ";
     }
@@ -59,15 +44,13 @@ pid pid_calculate(pid pid_a, milliseconds time_elapsed)
     {
         // Calculate error
         pid_a.error = pid_a.set_pt - pid_a.input;
-        cout << "Error " << pid_a.error << endl;
 
         // Calculate P value
         pid_a.P = pid_a.error * pid_a.kp;
         cout << "P: " << pid_a.P;
     }
 
-    // Add error to total error sum
-    //pid_a.error_sum += pid_a.error * static_cast<float>(sample_rate_ms.count());
+    // Add error*time to total error sum
     pid_a.error_sum += pid_a.error * static_cast<float>(time_elapsed.count());
     // Calculate I value
     pid_a.I = pid_a.error_sum * pid_a.ki;
@@ -83,7 +66,6 @@ pid pid_calculate(pid pid_a, milliseconds time_elapsed)
     cout << " I: " << pid_a.I;
 
     // Calculate D value (rate of change of error)
-    //pid_a.D = pid_a.kd * (pid_a.P - pid_a.prev_error) / (static_cast<float>(sample_rate_ms.count()));
     pid_a.D = pid_a.kd * (pid_a.P - pid_a.prev_error) / time_elapsed.count();
     cout << " D: " << pid_a.D << endl;
     // Set previous error
@@ -91,11 +73,12 @@ pid pid_calculate(pid pid_a, milliseconds time_elapsed)
 
     // Set output
     pid_a.output_adjust = static_cast<int>(pid_a.P + pid_a.I + pid_a.D);
-    if(pid_a.output_adjust < 2 and pid_a.output_adjust > -2)
+    // If output too small, ignore it
+    if(pid_a.output_adjust < 1 and pid_a.output_adjust > -1)
     {
         pid_a.output_adjust = 0;
     }
-
+    //*/
     cout << "PID adjustment: " << pid_a.output_adjust << endl;
 
     return pid_a;
