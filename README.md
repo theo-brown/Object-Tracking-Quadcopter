@@ -4,12 +4,43 @@
 
 PiCTO (Pi Colour Tracking of Objects) uses colour thresholding to track objects with the Raspberry Pi camera.
 
-Requires yaw input of quadcopter flight controller connected to pin 17, Raspberry Pi camera plugged in to Pi.
+### Preliminary setup ###
+
+- Connect Raspberry Pi Camera to CSI port on the Pi
+- Connect yaw signal input (white) of flight controller to GPIO pin 17
+- Connect yaw ground (black) from the flight controller to GPIO GND pin
+- Power up the Pi using the microUSB power port
+- Run PiCTO on the Raspberry Pi (`sudo ./PiCTO` - superuser privileges are required for GPIO control)
+- After the Pi begins to ouput neutral PWM (signified by `Initialising PIGPIO and neutral throttle... Done`) connect the yaw power output (red) from the flight controller to 5V pin on the Pi, and remove microUSB power
+
 
 ### Usage ###
-Preliminary stage: Use the sliders to set the HSV value until the green circle (Preview window) is drawn around the object. Press (r) to take another image
-When finished, arm the quadcopter (a) and press (q) to continue.
-PiCTO then will run until (q) is pressed again, controlling the yaw of the quadcopter to track the object of that colour.
+
+_Setup stage:_ 
+
+To track an object, PiCTO uses specific colour values - Hue, Saturation and Value. These identify a precise shade of the colour so objects of that colour are identified from the image. 
+
+Once PiCTO has been run, two windows will appear - `Preview` and `Threshold` - alongside the message `Taking preliminary image for colour recognition...`. PiCTO captures a frame from the camera and displays it in `Preview`. Use the sliders in `Threshold` to set the HSV value until the green circle is drawn around the object on the `Preview` window. Press (r) to take another image.
+
+When finished, arm the quadcopter (a) and press (q) to continue (disarm the quadcopter using the (d) key).
+
+
+_Run stage:_
+
+PiCTO will then control the yaw of the quadcopter using PWM to point in the direction of the coloured object.
+
+    To arm the quadcopter, press (a). 
+    To disarm the quadcopter, press (d).
+    To quit and end the program, press (q).
+
+_PID adjustment:_
+
+PiCTO supports PID tweaking while running.
+
+    Increase P gain: (p)    Decrease P gain: (o)
+    Increase I gain: (i)    Decrease I gain: (u)
+    Increase D gain: (y)    Decrease D gain: (t)
+
 
 ### PiCTO structure: ###
  - Take frame from PiCamera
@@ -18,10 +49,12 @@ PiCTO then will run until (q) is pressed again, controlling the yaw of the quadc
  - Use calculated object centre to find error (distance from centre)
  - Make PWM adjustments to move object to centre
 
+
 ### Files: ###
+- PiCTO      - Executable program file
 - PiCTO.cpp  - Main object tracking file
 - camera.hpp - Header file containing code for controlling Raspberry Pi camera
-- quad.hpp   - Header file containing code that relates to quadcopter control (PIGPIO)
+- quad.hpp   - Header file containing code that relates to quadcopter control (using PIGPIO)
 - opencv.hpp - Header file containing all code relating to OpenCV image processing
 - pid.hpp    - Header file containing the PID algorithm
 
