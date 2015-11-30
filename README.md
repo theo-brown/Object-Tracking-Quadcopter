@@ -10,7 +10,7 @@ OCTO-pi (OpenCV Coloured Object Tracking) uses colour thresholding to track obje
 - Connect yaw signal input (white) of flight controller to GPIO pin 17
 - Connect yaw ground (black) from the flight controller to GPIO GND pin
 - Power up the Pi using the microUSB power port
-- Run PiCTO on the Raspberry Pi (`sudo ./PiCTO` - superuser privileges are required for GPIO control)
+- Run OCTO-pi on the Raspberry Pi (`sudo ./OCTO-pi` - superuser privileges are required for GPIO control)
 - After the Pi begins to ouput neutral PWM (signified by `Initialising PIGPIO and neutral throttle... Done`) connect the yaw power output (red) from the flight controller to 5V pin on the Pi, and remove microUSB power
 
 
