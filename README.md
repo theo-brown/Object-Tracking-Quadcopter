@@ -60,4 +60,4 @@ PiCTO supports PID tweaking while running.
 
 
 Compile with: 
-g++ PiCTO.cpp -o PiCTO -I/usr/local/include/ -lraspicam -lraspicam_cv -lopencv_core -lopencv_highgui -lopencv_features2d -lopencv_imgproc -lpigpio -lpthread -lrt -std=c++11
+g++ OCTO-pi.cpp -o OCTO-pi -I/usr/local/include/ -lraspicam -lraspicam_cv -lopencv_core -lopencv_highgui -lopencv_features2d -lopencv_imgproc -lpigpio -lpthread -lrt -std=c++11
