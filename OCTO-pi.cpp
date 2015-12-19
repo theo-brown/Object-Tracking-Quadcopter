@@ -50,13 +50,23 @@ int main()
     gpioInitialise();
     // Set yaw control pin to neutral
     gpioServo(PWM_PIN, PWM_NEUTRAL);
+    // Configure switch inputs
+    gpioSetMode(13, PI_INPUT);
+    gpioSetMode(12, PI_INPUT);
+    gpioSetMode(6, PI_INPUT);
+    gpioSetMode(5, PI_INPUT);
+    // Set pull up resistors
+    gpioSetPullUpDown(13, PI_PUD_UP);
+    gpioSetPullUpDown(12, PI_PUD_UP);
+    gpioSetPullUpDown(6, PI_PUD_UP);
+    gpioSetPullUpDown(5, PI_PUD_UP);
     this_thread::sleep_for(milliseconds(2000));
     cout << "Done." << endl;
 
     bool rept_training = true;
     bool rept_tracking = false;
     bool quad_armed = false;
-    
+
     while (rept_training or rept_tracking)
     {
         /*********************/
@@ -80,26 +90,24 @@ int main()
 
 				// Read switches
 				this_thread::sleep_for(milliseconds(15));
-				// Get keypress from user
-            			char c = waitKey(100);
-    			        if (c == 113) // q pressed
-            			{
+				if (!gpioRead(13))
+				{
 					cout << "Proceeding to object tracking. (q to exit, a to arm, d to disarm) " << endl;
 					rept_training = false;
 					rept_tracking = true;
 					break;
-		                }
-                                else if (c == 114) // r pressed
-		                {
-			                cout << "Restarting... " << endl;
+				}
+				if (!gpioRead(12))
+				{
+					cout << "Restarting... " << endl;
 					rept_training = true;
 					break;
-		                }
-           			else if (c == 97) // a pressed
-			        {
-			                if (not quad_armed) arm_quad();
+				}
+				if (!gpioRead(6))
+				{
+					if (not quad_armed) arm_quad();
 					else disarm_quad;
-			        }
+				}
 			}
 		}
 
@@ -116,53 +124,31 @@ int main()
 			frame1 = frame_capture(frame1);
 			// Detect objects in frame
 			frame1 = detect_obj(frame1, threshHue, threshSat, threshVal);
-       			char c = waitKey(5);
-		        if (c == 113) // q pressed
-      			{
-				cout << "Exiting... " << endl;
-				rept_training = false;
-				rept_tracking = false;
-				break;
-		        }
-                        else if (c == 114) // r pressed
-	                {
-		                cout << "Returning to colour training... " << endl;
-				rept_training = true;
-				rept_tracking = false;
-				break;
-		        }
-           		else if (c == 97) // a pressed
-			{
-			       if (not quad_armed) arm_quad();
-				else disarm_quad;
+
+			this_thread::sleep_for(milliseconds(15));
+                        if (!gpioRead(13))
+		        {
+                            cout << "User exit." << endl;
+                            rept_tracking = false;
+                            rept_training = false;
+                            gpioServo(PWM_PIN, PWM_NEUTRAL);
+                            break;
 			}
-			else if (c == 112) // p pressed
+			if (!gpioRead(12))
 			{
-				pid_yaw.kp += 0.001;
+			    cout << "Returning to colour training... " << endl;
+			    rept_training = true;
+			    rept_tracking = false;
+			    break;
 			}
-			else if (c == 111) // o pressed
+			if (!gpioRead(6))
 			{
-				pid_yaw.kp -= 0.001;
+			    if (not quad_armed) arm_quad();
+			    else disarm_quad();
 			}
-			else if (c == 105) // i pressed
+			if (!gpioRead(5))
 			{
-				pid_yaw.ki += 0.00001;
-			}
-			else if (c == 117) // u pressed
-			{
-				pid_yaw.ki -= 0.00001;
-			}
-			else if (c == 121) // y pressed
-			{
-				pid_yaw.kd += 0.1;
-			}
-			else if (c == 116) // t pressed
-			{
-				pid_yaw.kd -= 0.1;
-			}
-			else if (c == 114) // r pressed
-			{
-				pid_yaw.error_sum = 0; // Reset summing so integral does not be massive
+                            pid_yaw.error_sum = 0; // Reset summing so integral does not be massive
 			}
 
 			/*********/
