@@ -60,7 +60,7 @@ int main()
     gpioSetPullUpDown(12, PI_PUD_UP);
     gpioSetPullUpDown(6, PI_PUD_UP);
     gpioSetPullUpDown(5, PI_PUD_UP);
-    this_thread::sleep_for(milliseconds(2000));
+    this_thread::sleep_for(milliseconds(200));
     cout << "Done." << endl;
 
     bool rept_training = true;
@@ -74,7 +74,7 @@ int main()
         /*********************/
         while (rept_training)
         {
-            cout << "Taking preliminary image for colour recognition... (q to continue, r to restart, a to arm, d to disarm) ";
+            cout << "Taking preliminary image for colour recognition... (13 to continue, 12 to restart, 6 to arm/disarm) ";
             frame1 = frame_capture(frame1);
             cout << "Done." << endl;
 
@@ -89,18 +89,19 @@ int main()
 				waitKey(15); // Needed to display image
 
 				// Read switches
-				this_thread::sleep_for(milliseconds(15));
 				if (!gpioRead(13))
 				{
-					cout << "Proceeding to object tracking. (q to exit, a to arm, d to disarm) " << endl;
+					cout << "Proceeding to object tracking. (13 to exit, 6 to return to training, 6 to arm/disarm) " << endl;
 					rept_training = false;
 					rept_tracking = true;
+                                        this_thread::sleep_for(milliseconds(100));
 					break;
 				}
 				if (!gpioRead(12))
 				{
 					cout << "Restarting... " << endl;
 					rept_training = true;
+                                        this_thread::sleep_for(milliseconds(15));
 					break;
 				}
 				if (!gpioRead(6))
@@ -125,13 +126,13 @@ int main()
 			// Detect objects in frame
 			frame1 = detect_obj(frame1, threshHue, threshSat, threshVal);
 
-			this_thread::sleep_for(milliseconds(15));
                         if (!gpioRead(13))
 		        {
                             cout << "User exit." << endl;
                             rept_tracking = false;
                             rept_training = false;
                             gpioServo(PWM_PIN, PWM_NEUTRAL);
+                            this_thread::sleep_for(milliseconds(50));
                             break;
 			}
 			if (!gpioRead(12))
@@ -139,6 +140,7 @@ int main()
 			    cout << "Returning to colour training... " << endl;
 			    rept_training = true;
 			    rept_tracking = false;
+                            this_thread::sleep_for(milliseconds(15));
 			    break;
 			}
 			if (!gpioRead(6))
@@ -148,6 +150,7 @@ int main()
 			}
 			if (!gpioRead(5))
 			{
+                            this_thread::sleep_for(milliseconds(15));
                             pid_yaw.error_sum = 0; // Reset summing so integral does not be massive
 			}
 
