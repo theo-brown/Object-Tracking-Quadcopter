@@ -50,16 +50,23 @@ int main()
     gpioInitialise();
     // Set yaw control pin to neutral
     gpioServo(PWM_PIN, PWM_NEUTRAL);
+
     // Configure switch inputs
     gpioSetMode(13, PI_INPUT);
-    gpioSetMode(12, PI_INPUT);
-    gpioSetMode(6, PI_INPUT);
-    gpioSetMode(5, PI_INPUT);
-    // Set pull up resistors
     gpioSetPullUpDown(13, PI_PUD_UP);
+    gpioSetMode(12, PI_INPUT);
     gpioSetPullUpDown(12, PI_PUD_UP);
+    gpioSetMode(6, PI_INPUT);
     gpioSetPullUpDown(6, PI_PUD_UP);
+    gpioSetMode(5, PI_INPUT);
     gpioSetPullUpDown(5, PI_PUD_UP);
+
+    // Configure PWM-ADC-Comparator inputs
+    gpioSetMode(17, PI_INPUT);
+    gpioSetPullUpDown(17, PI_PUD_DOWN);
+    gpioSetMode(27, PI_INPUT);
+    gpioSetPullUpDown(27, PI_PUD_DOWN);
+
     this_thread::sleep_for(milliseconds(200));
     cout << "Done." << endl;
 
@@ -89,12 +96,12 @@ int main()
 				waitKey(15); // Needed to display image
 
 				// Read switches
-				if (!gpioRead(13))
+				if (!gpioRead(13) or (gpioRead(17) and !gpioRead(27)) ) // !13 = TFT switch pressed, 17 and 27 = Radio switch position 2
 				{
 					cout << "Proceeding to object tracking. (13 to exit, 6 to return to training, 6 to arm/disarm) " << endl;
 					rept_training = false;
 					rept_tracking = true;
-                                        this_thread::sleep_for(milliseconds(100));
+                                        this_thread::sleep_for(milliseconds(150));
 					break;
 				}
 				if (!gpioRead(12))
@@ -126,7 +133,7 @@ int main()
 			// Detect objects in frame
 			frame1 = detect_obj(frame1, threshHue, threshSat, threshVal);
 
-                        if (!gpioRead(13))
+                        if (!gpioRead(13) or (gpioRead(17) and gpioRead(27)) ) // !13 = TFT switch pressed, 17 and 27 = Radio switch position 3
 		        {
                             cout << "User exit." << endl;
                             rept_tracking = false;
@@ -135,7 +142,7 @@ int main()
                             this_thread::sleep_for(milliseconds(50));
                             break;
 			}
-			if (!gpioRead(12))
+			if (!gpioRead(12) or (!gpioRead(17) and !gpioRead(27)) ) // !12 = TFT switch pressed, !17 and !27 = Radio switch position 1
 			{
 			    cout << "Returning to colour training... " << endl;
 			    rept_training = true;
