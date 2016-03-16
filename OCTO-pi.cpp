@@ -81,7 +81,6 @@ int main()
                     cout << "Proceeding to object tracking. (13 to exit, 12 to return to training, 6 to arm/disarm) " << endl;
                     rept_training = false;
                     rept_tracking = true;
-                    this_thread::sleep_for(milliseconds(250));
                     break;
                 }
 		if (c == 114 or tft_switch == 12) // 114 = r pressed, TFT 12
@@ -89,7 +88,6 @@ int main()
                     tft_switch = 0;
 		    cout << "Restarting... " << endl;
 		    rept_training = true;
-                    this_thread::sleep_for(milliseconds(20));
 		    break;
 		}
 		if (c == 97 or tft_switch == 6) // 97 = a pressed, TFT 6

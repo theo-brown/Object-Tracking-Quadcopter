@@ -17,6 +17,7 @@ void tft_switch_interrupt(int gpio, int level, uint32_t tick)
 {
     tft_switch = gpio;
     cout << endl << "## TFT " << gpio << " pressed ##" << endl;
+    this_thread::sleep_for(milliseconds(500));
 }
 
 int gpio_setup()
