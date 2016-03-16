@@ -74,23 +74,27 @@ int main()
                 char c = waitKey(15); // Get keypress (needed to display image)
 
                 // Read switches
-                if (c==113 or (gpioRead(17) and !gpioRead(27))) // 113 = q pressed, 17 and 27 = Radio switch position 2
+                //if (c == 113 or tft_switch == 13 or (gpioRead(17) and !gpioRead(27))) // 113 = q pressed, TFT 13, or 17 and !27 = RSW 2
+                if (c == 113 or tft_switch == 13) // 113 = q pressed, TFT 13
                 {
-                    cout << "Proceeding to object tracking. (13 to exit, 6 to return to training, 6 to arm/disarm) " << endl;
+                    tft_switch = 0;
+                    cout << "Proceeding to object tracking. (13 to exit, 12 to return to training, 6 to arm/disarm) " << endl;
                     rept_training = false;
                     rept_tracking = true;
-                    this_thread::sleep_for(milliseconds(150));
+                    this_thread::sleep_for(milliseconds(250));
                     break;
                 }
-		if (c==114) // 114 = r pressed
+		if (c == 114 or tft_switch == 12) // 114 = r pressed, TFT 12
 		{
+                    tft_switch = 0;
 		    cout << "Restarting... " << endl;
 		    rept_training = true;
-                    this_thread::sleep_for(milliseconds(15));
+                    this_thread::sleep_for(milliseconds(20));
 		    break;
 		}
-		if (c==97) // 97 = a pressed
+		if (c == 97 or tft_switch == 6) // 97 = a pressed, TFT 6
 		{
+                    tft_switch = 0;
 		    if (not quad_armed) arm_quad();
 		    else disarm_quad;
 		}
@@ -113,9 +117,9 @@ int main()
             frame1 = detect_obj(frame1, threshHue, threshSat, threshVal);
 
             // Read keypress from user
-            char c = waitKey(15); // Needed to display image
+            char c = waitKey(15);
 
-            if (c==113 or (gpioRead(17) and !gpioRead(27))) // 113 = q pressed, 17 and 27 = Radio switch position 2
+            if (c == 113 or tft_switch == 13 or (gpioRead(17) and !gpioRead(27))) // 113 = q pressed, TFT 13 or 17 and 27 = RSW 2
             {
                 cout << "User exit." << endl;
                 rept_tracking = false;
@@ -124,22 +128,25 @@ int main()
                 this_thread::sleep_for(milliseconds(50));
                 break;
             }
-            //if (c==114 or (!gpioRead(17) and !gpioRead(27)) ) // 114 = r pressed, !17 and !27 = Radio switch position 1
-            if (c==114) // 114 = r pressed - for testing
+            //if (c == 114 or tft_switch == 13 or (!gpioRead(17) and !gpioRead(27)) ) // 114 = r pressed, TFT 13 or !17 and !27 = RSW 1
+            if (c == 114 or tft_switch == 13) // 114 = r pressed or TFT 13 (testing)
             {
+                tft_switch = 0;
                 cout << "Returning to colour training... " << endl;
                 rept_training = true;
                 rept_tracking = false;
                 this_thread::sleep_for(milliseconds(15));
                 break;
             }
-	    if (c==97) // 97 = a pressed
+            if (c == 97 or tft_switch == 6) // 97 = a pressed or TFT 6
 	    {
+                tft_switch = 0;
 	        if (not quad_armed) arm_quad();
 	        else disarm_quad();
 	    }
-	    if (c == 105) // 105 = i pressed
+	    if (c == 105 or tft_switch == 5) // 105 = i pressed or TFT 5
 	    {
+                tft_switch = 0;
                 this_thread::sleep_for(milliseconds(15));
                 pid_yaw.error_sum = 0; // Reset summing so integral does not be massive
             }
