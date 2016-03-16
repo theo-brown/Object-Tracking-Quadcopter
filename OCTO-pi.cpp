@@ -4,7 +4,7 @@
 #include <thread>
 #include "opencv.hpp"
 #include "camera.hpp"
-#include "quad.hpp"
+#include "gpio.hpp"
 #include "pid.hpp"
 
 using namespace cv;
@@ -18,12 +18,12 @@ int main()
     /****************/
     /** SET UP PID **/
     /****************/
-    pid pid_yaw;
+    pid pid_yaw; // Create PID structure
     pid_yaw.set_pt = IMG_WIDTH/2; // Set setpoint as the image centre
-    pid_yaw.kp = 0.702;
-    pid_yaw.ki = 0.00006;
-    pid_yaw.kd = 4.9;
-    int yaw_output = PWM_NEUTRAL;
+    pid_yaw.kp = 0.702; // P tuning parameter
+    pid_yaw.ki = 0.00006; // I tuning parameter
+    pid_yaw.kd = 4.9; // D tuning parameter
+    int yaw_output = PWM_NEUTRAL; // Set the output to 0
 
     /*******************************/
     /** INITIALISE CAPTURE DEVICE **/
@@ -46,29 +46,7 @@ int main()
     /***********************/
     /** INITIALISE PIGPIO **/
     /***********************/
-    cout << "Initialising PIGPIO and neutral throttle... ";
-    gpioInitialise();
-    // Set yaw control pin to neutral
-    gpioServo(PWM_PIN, PWM_NEUTRAL);
-
-    // Configure switch inputs
-    gpioSetMode(13, PI_INPUT);
-    gpioSetPullUpDown(13, PI_PUD_UP);
-    gpioSetMode(12, PI_INPUT);
-    gpioSetPullUpDown(12, PI_PUD_UP);
-    gpioSetMode(6, PI_INPUT);
-    gpioSetPullUpDown(6, PI_PUD_UP);
-    gpioSetMode(5, PI_INPUT);
-    gpioSetPullUpDown(5, PI_PUD_UP);
-
-    // Configure PWM-ADC-Comparator inputs
-    gpioSetMode(17, PI_INPUT);
-    gpioSetPullUpDown(17, PI_PUD_DOWN);
-    gpioSetMode(27, PI_INPUT);
-    gpioSetPullUpDown(27, PI_PUD_DOWN);
-
-    this_thread::sleep_for(milliseconds(200));
-    cout << "Done." << endl;
+    gpio_setup();
 
     bool rept_training = true;
     bool rept_tracking = false;
@@ -85,105 +63,111 @@ int main()
             frame1 = frame_capture(frame1);
             cout << "Done." << endl;
 
-			while (1)
-			{
-				frame1 = detect_obj(frame1, threshHue, threshSat, threshVal);
+            while (1)
+            {
+                frame1 = detect_obj(frame1, threshHue, threshSat, threshVal);
 
-				// Draw circle on mean point
-				Mat drawn_circle = frame1.captured.clone();
-				circle(drawn_circle, frame1.object.pt, sqrt(frame1.object.size/PI), Scalar(0,255,0));
-				imshow("OCTO-pi", drawn_circle);
-				waitKey(15); // Needed to display image
+                // Draw circle on mean point
+                Mat drawn_circle = frame1.captured.clone();
+                circle(drawn_circle, frame1.object.pt, sqrt(frame1.object.size/PI), Scalar(0,255,0));
+                imshow("OCTO-pi", drawn_circle); // Display image
+                char c = waitKey(15); // Get keypress (needed to display image)
 
-				// Read switches
-				if (gpioRead(17) && !gpioRead(27)) // 17 and not 27 = Radio switch position 2
-				{
-					cout << "RSW 2; Proceeding to object tracking. (RSW 3 to exit, RSW 2 to return to training, TFT 6 to arm/disarm) " << endl;
-					rept_training = false;
-					rept_tracking = true;
-                                        this_thread::sleep_for(milliseconds(150));
-					break;
-				}
-				if (!gpioRead(12)) // 12 = TFT switch
-				{
-					cout << "TFT 12 pressed; Restarting... " << endl;
-					rept_training = true;
-                                        this_thread::sleep_for(milliseconds(15));
-					break;
-				}
-				if (!gpioRead(6)) // 6 = TFT switch
-				{
-					if (not quad_armed) arm_quad();
-					else disarm_quad;
-				}
-			}
-		}
-
-		/*********************/
-		/** OBJECT TRACKING **/
-		/*********************/
-		// Get start time
-		time_point<high_resolution_clock> start_t = high_resolution_clock::now();
-		time_point<high_resolution_clock> end_t;
-		milliseconds elapsed_t;
-		while (rept_tracking)
+                // Read switches
+                if (c==113 or (gpioRead(17) and !gpioRead(27))) // 113 = q pressed, 17 and 27 = Radio switch position 2
+                {
+                    cout << "Proceeding to object tracking. (13 to exit, 6 to return to training, 6 to arm/disarm) " << endl;
+                    rept_training = false;
+                    rept_tracking = true;
+                    this_thread::sleep_for(milliseconds(150));
+                    break;
+                }
+		if (c==114) // 114 = r pressed
 		{
-			// Capture frame
-			frame1 = frame_capture(frame1);
-			// Detect objects in frame
-			frame1 = detect_obj(frame1, threshHue, threshSat, threshVal);
-
-                        if (gpioRead(17) && gpioRead(27)) // 17 and 27 = Radio switch position 3
-		        {
-                            cout << "RSW 3; User exit." << endl;
-                            rept_tracking = false;
-                            rept_training = false;
-                            gpioServo(PWM_PIN, PWM_NEUTRAL);
-                            this_thread::sleep_for(milliseconds(50));
-                            break;
-			}
-			if (!gpioRead(17) && !gpioRead(27)) // !17 and !27 = Radio switch position 1
-			{
-			    cout << "RSW 1; Returning to colour training... " << endl;
-			    rept_training = true;
-			    rept_tracking = false;
-                            this_thread::sleep_for(milliseconds(15));
-			    break;
-			}
-			if (!gpioRead(6))
-			{
-			    if (not quad_armed) arm_quad();
-			    else disarm_quad();
-			}
-			if (!gpioRead(5))
-			{
-                            this_thread::sleep_for(milliseconds(15));
-                            pid_yaw.error_sum = 0; // Reset summing so integral does not be massive
-			}
-
-			/*********/
-			/** PID **/
-			/*********/
-			// Input x coordinate as process variable to PID
-			pid_yaw.input = frame1.object.pt.x;
-
-			// Get end time
-			end_t = high_resolution_clock::now();
-			elapsed_t = duration_cast<milliseconds>(end_t - start_t);
-			cout << "LOOP TIME: " << elapsed_t.count() << endl;
-			// Restart timer
-			start_t = high_resolution_clock::now();
-			// Calculate pid values
-			pid_yaw = pid_calculate(pid_yaw, elapsed_t);
-
-			/*****************/
-			/** YAW CONTROL **/
-			/*****************/
-			yaw_output = PWM_NEUTRAL - pid_yaw.output_adjust;
-			cout << "Yaw: " << yaw_output << endl;
-			gpioServo(PWM_PIN, yaw_output); // Send PWM pulses
+		    cout << "Restarting... " << endl;
+		    rept_training = true;
+                    this_thread::sleep_for(milliseconds(15));
+		    break;
 		}
-	}
+		if (c==97) // 97 = a pressed
+		{
+		    if (not quad_armed) arm_quad();
+		    else disarm_quad;
+		}
+            }
+        }
+
+	/*********************/
+	/** OBJECT TRACKING **/
+        /*********************/
+        // Get start time
+        time_point<high_resolution_clock> start_t = high_resolution_clock::now();
+        time_point<high_resolution_clock> end_t;
+        milliseconds elapsed_t;
+
+        while (rept_tracking)
+        {
+            // Capture frame
+            frame1 = frame_capture(frame1);
+            // Detect objects in frame
+            frame1 = detect_obj(frame1, threshHue, threshSat, threshVal);
+
+            // Read keypress from user
+            char c = waitKey(15); // Needed to display image
+
+            if (c==113 or (gpioRead(17) and !gpioRead(27))) // 113 = q pressed, 17 and 27 = Radio switch position 2
+            {
+                cout << "User exit." << endl;
+                rept_tracking = false;
+                rept_training = false;
+                gpioServo(PWM_PIN, PWM_NEUTRAL);
+                this_thread::sleep_for(milliseconds(50));
+                break;
+            }
+            //if (c==114 or (!gpioRead(17) and !gpioRead(27)) ) // 114 = r pressed, !17 and !27 = Radio switch position 1
+            if (c==114) // 114 = r pressed - for testing
+            {
+                cout << "Returning to colour training... " << endl;
+                rept_training = true;
+                rept_tracking = false;
+                this_thread::sleep_for(milliseconds(15));
+                break;
+            }
+	    if (c==97) // 97 = a pressed
+	    {
+	        if (not quad_armed) arm_quad();
+	        else disarm_quad();
+	    }
+	    if (c == 105) // 105 = i pressed
+	    {
+                this_thread::sleep_for(milliseconds(15));
+                pid_yaw.error_sum = 0; // Reset summing so integral does not be massive
+            }
+
+
+            /*********/
+            /** PID **/
+            /*********/
+            // Input x coordinate as process variable to PID
+            pid_yaw.input = frame1.object.pt.x;
+
+            // Get end time
+            end_t = high_resolution_clock::now();
+            elapsed_t = duration_cast<milliseconds>(end_t - start_t);
+            cout << "LOOP TIME: " << elapsed_t.count() << endl;
+            // Restart timer
+            start_t = high_resolution_clock::now();
+            // Calculate pid values
+            pid_yaw = pid_calculate(pid_yaw, elapsed_t);
+
+            /*****************/
+            /** YAW CONTROL **/
+            /*****************/
+            yaw_output = PWM_NEUTRAL - pid_yaw.output_adjust;
+            cout << "Yaw: " << yaw_output << endl;
+            gpioServo(PWM_PIN, yaw_output); // Send PWM pulses
+            }
+    }
 
     // Clean up
     cout << "Releasing camera... " << endl;

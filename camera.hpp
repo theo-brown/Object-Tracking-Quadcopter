@@ -19,6 +19,8 @@ int camera_init()
     cout << "Initialising Pi camera... ";
 
     pi_camera.set(CV_CAP_PROP_FORMAT, CV_8UC3);
+    pi_camera.set(CV_CAP_PROP_FRAME_WIDTH, 256);
+    pi_camera.set(CV_CAP_PROP_FRAME_HEIGHT, 144);
 
     pi_camera.open();
     this_thread::sleep_for(milliseconds(1000));
@@ -48,7 +50,7 @@ frame frame_capture(frame img)
         return img;
     }
 
-    resize(img.captured, img.captured, Size(IMG_WIDTH,IMG_HEIGHT), 0, 0, INTER_LINEAR);
+    //resize(img.captured, img.captured, Size(IMG_WIDTH,IMG_HEIGHT), 0, 0, INTER_LINEAR);
 
     return img;
 }
