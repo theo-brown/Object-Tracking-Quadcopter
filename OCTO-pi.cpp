@@ -28,7 +28,7 @@ int main()
     /*******************************/
     /** INITIALISE CAPTURE DEVICE **/
     /*******************************/
-    frame frame1;
+    frame frame1; // The structure for storing frames in
     camera_init();
 
     /********************/
@@ -148,7 +148,30 @@ int main()
                 this_thread::sleep_for(milliseconds(15));
                 pid_yaw.error_sum = 0; // Reset summing so integral does not be massive
             }
-
+            if (c == 109) // m pressed
+            {
+                pid_yaw.kp += 0.01;
+	    }
+            else if (c == 110) // n pressed
+            {
+                pid_yaw.kp -= 0.01;
+	    }
+            else if (c == 98) // b pressed
+            {
+	        pid_yaw.ki += 0.0001;
+            }
+	    else if (c == 118) // v pressed
+	    {
+                pid_yaw.ki -= 0.0001;
+	    }
+	    else if (c == 99) // c pressed
+	    {
+	        pid_yaw.kd += 0.1;
+	    }
+	    else if (c == 120) // x pressed
+	    {
+                pid_yaw.kd -= 0.1;
+	    }
 
             /*********/
             /** PID **/
